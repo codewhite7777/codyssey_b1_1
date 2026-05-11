@@ -19,7 +19,7 @@ export LC_ALL=C
 : "${AGENT_PORT:=15034}"
 : "${AGENT_LOG_DIR:=/var/log/agent-app}"
 
-APP_NAME="agent_app.py"
+APP_NAME="agent-app"
 LOG_FILE="$AGENT_LOG_DIR/monitor.log"
 
 # 임계값 (명세)
@@ -41,7 +41,7 @@ echo "[HEALTH CHECK]"
 PID=$(pgrep -f "$APP_NAME" | head -1 || true)
 if [ -z "$PID" ]; then
     echo "Checking process '$APP_NAME'... [FAIL]"
-    log_to_file "[ERROR] process '$APP_NAME' not running"
+    log_to_file "[ALERT] agent-app 미실행"
     exit 1
 fi
 
@@ -55,7 +55,7 @@ case "$STATE" in
         ;;
     Z)
         echo "Checking process '$APP_NAME'... [FAIL] (PID: $PID, state=Z zombie)"
-        log_to_file "[ERROR] PID:$PID is zombie"
+        log_to_file "[ALERT] agent-app PID:$PID is zombie"
         exit 1
         ;;
     *)
@@ -68,7 +68,7 @@ if ss -tulnp 2>/dev/null | grep -q ":${AGENT_PORT} "; then
     echo "Checking port $AGENT_PORT... [OK]"
 else
     echo "Checking port $AGENT_PORT... [FAIL]"
-    log_to_file "[ERROR] port $AGENT_PORT not LISTEN"
+    log_to_file "[ALERT] port $AGENT_PORT not LISTEN"
     exit 1
 fi
 
