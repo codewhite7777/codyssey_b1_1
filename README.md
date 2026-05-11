@@ -2,7 +2,7 @@
 
 > Codyssey B1-1 과제 산출물 레포. 학습 노트는 별도 레포 [codyssey_notes](https://github.com/codewhite7777/codyssey_notes/tree/main/codyssey_b1_1_study)에 보관.
 
-**상태**: 🟡 학습 단계 — 구현 미시작
+**상태**: 🟢 코드 작성 완료 — OrbStack 머신에서 테스트 대기
 
 ## 과제 개요
 
@@ -21,37 +21,67 @@ codyssey_b1_1/
 │   ├── spec.md              # Codyssey 원본 명세
 │   └── 수행내역서.md         # 산출물 1 (구현 단계에서 작성)
 ├── bin/
-│   ├── monitor.sh           # 핵심 산출물 (구현 예정)
-│   └── report.sh            # 보너스 (구현 예정)
+│   ├── monitor.sh           # 핵심 산출물 ✓
+│   └── report.sh            # 보너스 (로그 통계) ✓
 ├── setup/
-│   ├── 01-ssh.sh            # SSH 포트·root 차단 (예정)
-│   ├── 02-firewall.sh       # ufw 설정 (예정)
-│   ├── 03-users-groups.sh   # 계정·그룹 생성 (예정)
-│   ├── 04-directories.sh    # 디렉토리·ACL (예정)
-│   ├── 05-environment.sh    # 환경 변수·키 파일 (예정)
-│   ├── 06-cron.sh           # cron 등록 (예정)
-│   ├── setup-all.sh         # 통합 실행 (예정)
-│   └── verify.sh            # 명세 검증 자동화 (예정)
+│   ├── 01-ssh.sh            # SSH 포트·root 차단 ✓
+│   ├── 02-firewall.sh       # ufw 설정 ✓
+│   ├── 03-users-groups.sh   # 계정·그룹 생성 ✓
+│   ├── 04-directories.sh    # 디렉토리·ACL ✓
+│   ├── 05-environment.sh    # 환경 변수·키 파일 ✓
+│   ├── 06-cron.sh           # cron + logrotate ✓
+│   ├── setup-all.sh         # 통합 실행 + 배포 ✓
+│   └── verify.sh            # 명세 검증 자동화 (35개 항목) ✓
 ├── evidence/                # 스샷·명령 출력 증거
 └── .gitignore
 ```
 
-## 사용 방법 (구현 완료 후)
+## 사용 방법
+
+### 평가 환경(클러스터 또는 OrbStack)에서
 
 ```bash
-# 1. 클러스터 또는 평가 환경에서 클론
+# 1. 레포 클론
 git clone https://github.com/codewhite7777/codyssey_b1_1.git
 cd codyssey_b1_1
 
-# 2. 시스템 설정 일괄 적용
+# 2. 시스템 설정 일괄 적용 (sudo 필요)
 sudo bash setup/setup-all.sh
 
-# 3. 검증
-bash setup/verify.sh
+# 3. agent-app 실행 (별도 터미널)
+sudo -u agent-admin -i
+python $AGENT_HOME/agent_app.py
+# Ctrl+C로 종료
 
-# 4. 모니터 스크립트 실행 (cron 또는 수동)
-bash bin/monitor.sh
+# 4. 1-2분 대기 후 cron 자동 실행 확인
+sudo tail /var/log/agent-app/monitor.log
+
+# 5. 종합 검증
+bash setup/verify.sh
 ```
+
+### 개별 단계 실행
+
+```bash
+sudo bash setup/01-ssh.sh         # SSH만
+sudo bash setup/02-firewall.sh    # 방화벽만
+# ... 등
+```
+
+### 보너스 — 로그 통계 리포트
+
+```bash
+bash bin/report.sh                                              # 전체 로그
+bash bin/report.sh "2026-05-11 00:00" "2026-05-11 23:59"        # 시간 범위
+```
+
+## 설계 원칙
+
+- **멱등성**: 모든 setup 스크립트는 여러 번 실행해도 동일 결과
+- **`set -euo pipefail`**: 모든 스크립트가 안전 모드로 시작
+- **명시적 sudo**: root 권한이 필요한 명령만 sudo
+- **자동 검증**: setup-all.sh 끝에 verify.sh 자동 실행
+- **cron 환경 함정 회피**: monitor.sh가 PATH·LC_ALL 명시
 
 ## 학습 노트 (별도 레포)
 
