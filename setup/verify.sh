@@ -2,7 +2,11 @@
 # setup/verify.sh — 명세의 모든 검증 항목 자동 점검
 # 실패해도 끝까지 진행, 마지막에 종합 결과
 
-set -uo pipefail
+set -u
+# 주의: pipefail 의도적으로 비활성.
+# check 함수의 cmd 안에서 `... | grep -q ...` 패턴을 자주 쓰는데,
+# grep -q 가 첫 매칭에서 즉시 종료하면 앞 명령이 SIGPIPE(141)로 끝남.
+# pipefail 켜져 있으면 이를 pipe 실패로 잡아 false negative 발생.
 
 PASS=0
 FAIL=0
