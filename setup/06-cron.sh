@@ -9,6 +9,7 @@ echo "===== [06/06] cron·logrotate ====="
 # 1. logrotate 정책 — 10MB / 10파일 보존
 sudo tee /etc/logrotate.d/agent-app >/dev/null <<'EOF'
 /var/log/agent-app/monitor.log {
+    su agent-dev agent-core
     size 10M
     rotate 10
     compress
