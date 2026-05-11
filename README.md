@@ -62,17 +62,28 @@ OrbStack 환경에서 처음 시작한다면 1단계 앞에 **VM 생성**이 한
 | 항목 | 요구 |
 |---|---|
 | OS | **Ubuntu 22.04 LTS** (또는 동등 리눅스) |
+| 아키텍처 | **amd64 (x86_64)** — 제공 agent-app 바이너리가 amd64 ELF |
+| GLIBC | **≥ 2.38** — agent-app 의 Python 런타임 의존 (Ubuntu 24.04 기본 충족) |
 | 권한 | `sudo` 사용 가능 사용자 |
 | 네트워크 | `apt` + `git` 접근 가능 |
 | 디스크 | 최소 1 GB 여유 |
+
+> [!IMPORTANT]
+> **GLIBC 버전 주의** — 제공된 `agent-app` 바이너리는 GLIBC 2.38 이상을 요구한다 (Ubuntu 24.04 빌드 환경 기준).
+> Ubuntu 22.04 의 기본 GLIBC 는 2.35 이므로 22.04 에서는 agent-app 실행 시
+> `version 'GLIBC_2.38' not found` 에러가 발생한다.
+> 명세는 "Ubuntu 22.04 LTS **또는 동등 리눅스**"를 허용하므로 **Ubuntu 24.04 권장**.
+> 확인 명령: `ldd --version | head -1`
 
 ### 시나리오 A — OrbStack (로컬 평가)
 
 Mac에 OrbStack이 설치된 환경에서 새 Ubuntu VM을 띄워 실행한다.
 
 ```bash
-# 1) Mac에서 — Ubuntu 22.04 VM 생성
-orb create ubuntu:22.04 codyssey-b1-1
+# 1) Mac에서 — Ubuntu 24.04 amd64 VM 생성
+#    --arch amd64 가 핵심 (Apple Silicon Mac 에서도 amd64 강제)
+#    24.04 는 GLIBC 2.39 로 agent-app 의 GLIBC 2.38 요구 충족
+orb create --arch amd64 ubuntu:24.04 codyssey-b1-1
 
 # 2) VM 진입 (-m 플래그가 zsh의 하이픈 토큰화 함정을 피함)
 orb shell -m codyssey-b1-1
@@ -230,6 +241,9 @@ bash bin/report.sh "2026-05-11 00:00" "2026-05-11 23:59"        # 시간 범위
 | `Permission denied` | sudo 권한 부족 또는 sshd 재시작 후 새 포트(`-p 20022`)로 재접속 필요 |
 | `cron`이 monitor.log를 안 채움 | cron 데몬 미실행 → `sudo systemctl start cron` |
 | `verify.sh` 일부 항목 FAIL | 실패 항목의 주제를 학습 노트에서 찾아 참조 |
+| `agent-app: Exec format error` | 아키텍처 미스매치 — VM 이 ARM64 인데 바이너리 x86_64. `orb create --arch amd64 ...` 로 amd64 VM 사용 |
+| `version 'GLIBC_2.38' not found` | OS 의 GLIBC 가 너무 옛 버전. `ldd --version` 으로 확인 → Ubuntu 24.04 등 더 새 OS 로 VM 재생성 |
+| `[sudo] password for ...` (다른 사용자 전환 시) | OrbStack NOPASSWD 는 일반 sudo 만 적용. `sudo -i` 로 root 셸 먼저 진입 후 그 안에서 `sudo -u other_user ...` |
 
 ## 설계 원칙
 
