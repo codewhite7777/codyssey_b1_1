@@ -38,6 +38,25 @@ codyssey_b1_1/
 
 ## 평가 환경 셋업 & 실행
 
+### 전체 흐름
+
+평가 환경 종류와 무관하게 다음 6단계를 따른다. 단계 1만 환경별로 차이.
+
+```mermaid
+flowchart LR
+    A["1.환경 진입<br/>OrbStack 또는 SSH"] --> B["2.사전 패키지<br/>설치"]
+    B --> C["3.git clone"]
+    C --> D["4.setup-all.sh<br/>★ 메인 작업"]
+    D --> E["5.cron 1~2분<br/>대기·확인"]
+    E --> F["6.verify.sh<br/>35개 자동 검증"]
+
+    style A fill:#cce5ff
+    style D fill:#ffe6cc
+    style F fill:#ccffcc
+```
+
+OrbStack 환경에서 처음 시작한다면 단계 1 앞에 **VM 생성** 한 번이 더 필요 (아래 시나리오 A 참조).
+
 ### 사전 요구사항
 
 | 항목 | 요구 |
