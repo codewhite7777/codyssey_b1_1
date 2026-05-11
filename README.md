@@ -57,6 +57,46 @@ flowchart LR
 
 OrbStack 환경에서 처음 시작한다면 단계 1 앞에 **VM 생성** 한 번이 더 필요 (아래 시나리오 A 참조).
 
+### 왜 VM (Linux Machine) 인가? — Docker 컨테이너가 아닌 이유
+
+명세는 "컨테이너 또는 VM"을 모두 허용하지만, 이 과제의 요구가 **시스템 데몬 중심**이라 실용적으로 **VM이 표준**이다.
+
+#### 명세 요구와 환경 매핑
+
+| 명세 요구 | 필요한 시스템 기능 |
+|---|---|
+| SSH 포트 변경 + sshd 재시작 (#1) | systemd로 sshd 데몬 관리 |
+| ufw 방화벽 (#2) | netfilter/iptables 직접 조작 |
+| cron 매분 실행 (#6) | cron 데몬 + systemd timer |
+| logrotate (#6) | `/etc/cron.daily/` 자동 실행 |
+
+이 4개 요구가 모두 **운영체제 수준의 데몬·커널 기능**을 요구한다. Docker 컨테이너는 본래 "단일 애플리케이션 실행"에 최적화된 구조라 위 기능들이 기본 비활성이거나 제약된다.
+
+#### Docker 컨테이너 vs Linux Machine (VM)
+
+| 항목 | Docker 컨테이너 | **Linux Machine (VM)** ★ |
+|---|---|---|
+| systemd (init) | 기본 비활성 — `--privileged` + 특수 이미지 필요 | 완전 동작 |
+| sshd 데몬 | systemd 없이는 까다로움 (foreground 실행) | `systemctl start ssh` 한 줄 |
+| ufw 방화벽 | iptables를 호스트와 공유 → 권한 제약·간섭 | 머신 독립적, 자유롭게 조작 |
+| cron 데몬 | 기본 안 돌아감 — 별도 시작 스크립트 필요 | 설치 후 즉시 동작 |
+| 환경 동등성 | 컨테이너 ≠ 진짜 서버 | **클러스터 평가 환경과 거의 동일** |
+| OrbStack 생성 명령 | `docker run ...` | `orb create ubuntu:22.04 <이름>` |
+
+→ Docker 컨테이너로 진행하면 **추가 설정 부담**이 명세 학습 자체보다 커진다. 또한 클러스터의 실제 평가 환경(Ubuntu 22.04 VM)과 동일성을 확보하려면 VM이 자연스럽다.
+
+#### 그래도 컨테이너로 하고 싶다면
+
+가능은 하지만 권장하지 않음. 다음 추가 작업이 필요하다:
+- `--privileged` 또는 세밀한 capability 부여 (`--cap-add=NET_ADMIN`, `--cap-add=SYS_ADMIN`)
+- systemd가 동작하는 base 이미지(예: `jrei/systemd-ubuntu`) 사용
+- cgroup·`/sys/fs/cgroup` 마운트 옵션 조정
+
+이번 과제의 학습 목표(시스템 운영)에서 **벗어난 노이즈**가 늘어나므로 VM 추천.
+
+> [!IMPORTANT]
+> OrbStack의 **Linux Machine은 가벼운 VM** — Mac 위에서 거의 컨테이너 속도로 부팅되면서도 진짜 systemd Ubuntu를 제공한다. "VM은 무겁다"는 통념은 OrbStack에선 거의 해당 없음.
+
 ### 사전 요구사항
 
 | 항목 | 요구 |
