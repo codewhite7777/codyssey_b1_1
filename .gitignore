@@ -1,0 +1,16 @@
+# 임시·민감 파일
+*.swp
+*.tmp
+.DS_Store
+
+# 키·인증 (실제 키 파일은 절대 커밋 X)
+api_keys/
+*.key
+secret*
+
+# 로컬 로그
+*.log
+monitor.log*
+
+# Bash 디버그 출력
+*.sh.out
