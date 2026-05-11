@@ -27,7 +27,10 @@ sudo logrotate -d /etc/logrotate.d/agent-app >/dev/null 2>&1 \
     || echo "[WARN] logrotate dry-run 경고 — 직접 실행해 확인"
 
 # 2. agent-admin 의 crontab에 monitor.sh 매분 등록 (멱등)
+# mktemp 기본 권한이 0600이라 agent-admin 이 못 읽음 → 0644 로 완화
+# (lifespan 짧고 trap 으로 즉시 삭제되므로 안전)
 TMPCRON=$(mktemp)
+chmod 0644 "$TMPCRON"
 trap "rm -f $TMPCRON" EXIT
 
 # 기존 crontab에서 monitor.sh 줄과 환경 변수 라인 제거
