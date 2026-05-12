@@ -1,17 +1,54 @@
 #!/usr/bin/env bash
-# setup/verify.sh — 명세의 모든 검증 항목 자동 점검
-# 실패해도 끝까지 진행, 마지막에 종합 결과
+# ═══════════════════════════════════════════════════════════════════
+#  setup/verify.sh — 명세 35개 항목 자동 검증
+# ═══════════════════════════════════════════════════════════════════
+#
+#  무엇  : 명세의 모든 영역(SSH·방화벽·사용자·디렉토리·환경·monitor·cron)
+#          을 35개 check 로 자동 점검. 실패해도 끝까지 진행 후 종합 결과.
+#  왜    : 평가자·학생이 한 줄로 명세 충족 여부 즉시 확인 가능.
+#          setup 직후 + 평가 시점 모두 활용.
+#  의존  : setup-all.sh 가 먼저 실행되어 있어야 의미 있음.
+#
+#  ★ pipefail 의도적 비활성 :
+#    cmd 안에서 'X | grep -q ...' 패턴이 많음. grep -q 가 첫 매칭에서
+#    즉시 종료하면 앞 명령(X)이 SIGPIPE(141)로 끝남. pipefail 켜져 있으면
+#    이 정상 동작을 pipe 실패로 잡아 false negative 발생.
+#    → set -u 만 사용 (errexit 도 빼야 실패해도 끝까지 진행).
+#
+#  학습 노트: bash-set-safe, 회고 노트 함정 3
+# ═══════════════════════════════════════════════════════════════════
+#
+#  쓰인 셸 문법:
+#    set -u                ─ unset 변수 참조 시 에러
+#    local X="..."         ─ 함수 내부 지역 변수
+#    eval "$cmd"           ─ cmd 문자열을 셸 명령으로 평가·실행
+#    if cmd >/dev/null 2>&1 ─ cmd 실행해 stdout·stderr 모두 버림,
+#                             exit code 만으로 if 분기
+#    ARR+=("X")            ─ 배열에 요소 추가
+#    ((PASS++)) || true    ─ 산술 증가, PASS=0 일 때 0 반환되어 set -e
+#                             걸리는 함정 회피 (|| true)
+#    "${ARR[@]}"           ─ 배열 모든 요소를 개별 인자로 펼침
+#    [ -d X ]              ─ X 가 디렉토리인지
+#    [ -f X ]              ─ X 가 일반 파일인지
+#    [ -x X ]              ─ X 가 실행 가능한지
+#    $(stat -c %U X)       ─ 파일 X 의 소유자 이름
+#    $(stat -c %a X)       ─ 파일 X 의 권한 (8진수)
+#    id -nG USER           ─ USER 의 모든 그룹 이름 (보조 그룹 포함)
+#    grep -qw WORD         ─ -q quiet (출력 X), -w 단어 단위 매칭
+#    !cmd                  ─ cmd 의 exit code 반전 (실패해야 통과)
+#
+# ═══════════════════════════════════════════════════════════════════
 
-set -u
-# 주의: pipefail 의도적으로 비활성.
-# check 함수의 cmd 안에서 `... | grep -q ...` 패턴을 자주 쓰는데,
-# grep -q 가 첫 매칭에서 즉시 종료하면 앞 명령이 SIGPIPE(141)로 끝남.
-# pipefail 켜져 있으면 이를 pipe 실패로 잡아 false negative 발생.
+set -u   # pipefail · errexit 의도적 비활성
 
 PASS=0
 FAIL=0
 FAILED_ITEMS=()
 
+# ─── check 함수 ──────────────────────────────────────────────────
+# 인자: $1 = 설명, $2 = 검사 명령(문자열)
+# - eval 로 명령 실행, exit code 만 본다
+# - >/dev/null 2>&1 : 출력 모두 버림 (테이블 깨끗하게)
 check() {
     local desc="$1"
     local cmd="$2"
@@ -29,67 +66,89 @@ echo "##############################################"
 echo "# 명세 검증 (verify.sh)"
 echo "##############################################"
 
+
+# ─── [1] SSH 설정 ─────────────────────────────────────────────────
 echo ""
 echo "===== [1] SSH 설정 ====="
-check "sshd_config Port=20022" 'sudo sshd -T 2>/dev/null | grep -q "^port 20022$"'
-check "sshd_config PermitRootLogin no" 'sudo sshd -T 2>/dev/null | grep -q "^permitrootlogin no$"'
-check "포트 20022 LISTEN" 'sudo ss -tulnp | grep -q ":20022 "'
+# sshd -T : 실제 적용된 효과적 config 출력 (파일이 아닌 메모리)
+check "sshd_config Port=20022"                'sudo sshd -T 2>/dev/null | grep -q "^port 20022$"'
+check "sshd_config PermitRootLogin no"        'sudo sshd -T 2>/dev/null | grep -q "^permitrootlogin no$"'
+check "포트 20022 LISTEN"                       'sudo ss -tulnp | grep -q ":20022 "'
 
+
+# ─── [2] 방화벽 ───────────────────────────────────────────────────
 echo ""
 echo "===== [2] 방화벽 ====="
-check "ufw 활성" 'sudo ufw status | grep -q "Status: active"'
-check "20022/tcp 허용" 'sudo ufw status | grep -qE "20022/tcp.*ALLOW"'
-check "15034/tcp 허용" 'sudo ufw status | grep -qE "15034/tcp.*ALLOW"'
+check "ufw 활성"                                 'sudo ufw status | grep -q "Status: active"'
+check "20022/tcp 허용"                           'sudo ufw status | grep -qE "20022/tcp.*ALLOW"'
+check "15034/tcp 허용"                           'sudo ufw status | grep -qE "15034/tcp.*ALLOW"'
 
+
+# ─── [3] 계정·그룹 ────────────────────────────────────────────────
 echo ""
 echo "===== [3] 계정·그룹 ====="
-check "사용자 agent-admin 존재" 'id agent-admin'
-check "사용자 agent-dev 존재" 'id agent-dev'
-check "사용자 agent-test 존재" 'id agent-test'
-check "그룹 agent-common 존재" 'getent group agent-common'
-check "그룹 agent-core 존재" 'getent group agent-core'
-check "agent-admin ∈ agent-common" 'id -nG agent-admin | grep -qw agent-common'
-check "agent-admin ∈ agent-core" 'id -nG agent-admin | grep -qw agent-core'
-check "agent-dev ∈ agent-common" 'id -nG agent-dev | grep -qw agent-common'
-check "agent-dev ∈ agent-core" 'id -nG agent-dev | grep -qw agent-core'
-check "agent-test ∈ agent-common" 'id -nG agent-test | grep -qw agent-common'
-check "agent-test ∉ agent-core (기대 차단)" '! id -nG agent-test | grep -qw agent-core'
+check "사용자 agent-admin 존재"                  'id agent-admin'
+check "사용자 agent-dev 존재"                    'id agent-dev'
+check "사용자 agent-test 존재"                   'id agent-test'
+check "그룹 agent-common 존재"                   'getent group agent-common'
+check "그룹 agent-core 존재"                     'getent group agent-core'
+check "agent-admin ∈ agent-common"               'id -nG agent-admin | grep -qw agent-common'
+check "agent-admin ∈ agent-core"                 'id -nG agent-admin | grep -qw agent-core'
+check "agent-dev ∈ agent-common"                 'id -nG agent-dev   | grep -qw agent-common'
+check "agent-dev ∈ agent-core"                   'id -nG agent-dev   | grep -qw agent-core'
+check "agent-test ∈ agent-common"                'id -nG agent-test  | grep -qw agent-common'
+# ! 앞 = 반전 — agent-test 가 agent-core 에 *없어야* 통과 (명세 의도)
+check "agent-test ∉ agent-core (기대 차단)"      '! id -nG agent-test | grep -qw agent-core'
 
+
+# ─── [4] 디렉토리·권한 ────────────────────────────────────────────
 echo ""
 echo "===== [4] 디렉토리·권한 ====="
 AGENT_HOME="/home/agent-admin/agent-app"
 LOG_DIR="/var/log/agent-app"
-check "$AGENT_HOME 존재" "[ -d \"$AGENT_HOME\" ]"
-check "$AGENT_HOME/upload_files 존재" "[ -d \"$AGENT_HOME/upload_files\" ]"
-check "$AGENT_HOME/api_keys 존재" "[ -d \"$AGENT_HOME/api_keys\" ]"
-check "$LOG_DIR 존재" "[ -d \"$LOG_DIR\" ]"
-check "$AGENT_HOME/bin 존재" "[ -d \"$AGENT_HOME/bin\" ]"
+check "$AGENT_HOME 존재"                         "[ -d \"$AGENT_HOME\" ]"
+check "$AGENT_HOME/upload_files 존재"            "[ -d \"$AGENT_HOME/upload_files\" ]"
+check "$AGENT_HOME/api_keys 존재"                "[ -d \"$AGENT_HOME/api_keys\" ]"
+check "$LOG_DIR 존재"                            "[ -d \"$LOG_DIR\" ]"
+check "$AGENT_HOME/bin 존재"                     "[ -d \"$AGENT_HOME/bin\" ]"
+# agent-test 가 api_keys 못 들어가야 통과 (! 반전)
 check "agent-test 가 api_keys 접근 차단 (EACCES)" '! sudo -u agent-test ls /home/agent-admin/agent-app/api_keys 2>/dev/null'
 
+
+# ─── [5] 환경 변수·키 파일 ────────────────────────────────────────
 echo ""
 echo "===== [5] 환경 변수·키 파일 ====="
 KEY_FILE="$AGENT_HOME/api_keys/t_secret.key"
-check "키 파일 존재" "[ -f \"$KEY_FILE\" ]"
-check "키 파일 내용 정확" "[ \"\$(sudo cat \"$KEY_FILE\")\" = 'agent_api_key_test' ]"
-check "agent-admin의 .bash_profile 에 AGENT_HOME 정의" 'sudo grep -q "^export AGENT_HOME=" /home/agent-admin/.bash_profile'
-check "AGENT_PORT=15034 정의" 'sudo grep -q "^export AGENT_PORT=.15034." /home/agent-admin/.bash_profile'
+check "키 파일 존재"                             "[ -f \"$KEY_FILE\" ]"
+# sudo cat : agent-core 가 아닌 사용자도 root 권한으로 read
+check "키 파일 내용 정확"                        "[ \"\$(sudo cat \"$KEY_FILE\")\" = 'agent_api_key_test' ]"
+check "agent-admin의 .bash_profile 에 AGENT_HOME 정의"  'sudo grep -q "^export AGENT_HOME=" /home/agent-admin/.bash_profile'
+# 15034 가 따옴표·공백 포함될 수 있어 . (any char) 로 유연 매칭
+check "AGENT_PORT=15034 정의"                    'sudo grep -q "^export AGENT_PORT=.15034." /home/agent-admin/.bash_profile'
 
+
+# ─── [6] monitor.sh 설치·권한 ─────────────────────────────────────
 echo ""
 echo "===== [6] monitor.sh 설치·권한 ====="
 MONITOR="$AGENT_HOME/bin/monitor.sh"
-check "monitor.sh 존재" "[ -f \"$MONITOR\" ]"
-check "monitor.sh 실행 가능" "[ -x \"$MONITOR\" ]"
-check "monitor.sh 소유자 agent-dev" "[ \"\$(stat -c %U \"$MONITOR\" 2>/dev/null)\" = 'agent-dev' ]"
-check "monitor.sh 그룹 agent-core" "[ \"\$(stat -c %G \"$MONITOR\" 2>/dev/null)\" = 'agent-core' ]"
-check "monitor.sh 권한 750" "[ \"\$(stat -c %a \"$MONITOR\" 2>/dev/null)\" = '750' ]"
+check "monitor.sh 존재"                          "[ -f \"$MONITOR\" ]"
+check "monitor.sh 실행 가능"                     "[ -x \"$MONITOR\" ]"
+# stat -c %U/G/a : 소유자명/그룹명/8진수 권한 추출
+check "monitor.sh 소유자 agent-dev"              "[ \"\$(stat -c %U \"$MONITOR\" 2>/dev/null)\" = 'agent-dev' ]"
+check "monitor.sh 그룹 agent-core"               "[ \"\$(stat -c %G \"$MONITOR\" 2>/dev/null)\" = 'agent-core' ]"
+check "monitor.sh 권한 750"                      "[ \"\$(stat -c %a \"$MONITOR\" 2>/dev/null)\" = '750' ]"
 
+
+# ─── [7] cron·logrotate ───────────────────────────────────────────
 echo ""
 echo "===== [7] cron·logrotate ====="
-check "agent-admin crontab에 monitor.sh" 'sudo -u agent-admin crontab -l 2>/dev/null | grep -q monitor.sh'
-check "logrotate 설정 파일 존재" "[ -f /etc/logrotate.d/agent-app ]"
-check "logrotate 문법 OK" 'sudo logrotate -d /etc/logrotate.d/agent-app 2>&1 | grep -q "rotating pattern"'
+check "agent-admin crontab에 monitor.sh"         'sudo -u agent-admin crontab -l 2>/dev/null | grep -q monitor.sh'
+check "logrotate 설정 파일 존재"                 "[ -f /etc/logrotate.d/agent-app ]"
+# logrotate -d : dry-run, "rotating pattern: ..." 출력이 정상 신호
+check "logrotate 문법 OK"                        'sudo logrotate -d /etc/logrotate.d/agent-app 2>&1 | grep -q "rotating pattern"'
 
-# 종합 결과
+
+# ─── 종합 결과 ────────────────────────────────────────────────────
 echo ""
 echo "##############################################"
 echo "# 결과: PASS=$PASS, FAIL=$FAIL"
