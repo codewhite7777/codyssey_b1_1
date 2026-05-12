@@ -69,10 +69,21 @@ OrbStack 환경에서 처음 시작한다면 1단계 앞에 **VM 생성**이 한
 | 디스크 | 최소 1 GB 여유 |
 
 > [!IMPORTANT]
-> **GLIBC 버전 주의** — 제공된 `agent-app` 바이너리는 GLIBC 2.38 이상을 요구한다 (Ubuntu 24.04 빌드 환경 기준).
-> Ubuntu 22.04 의 기본 GLIBC 는 2.35 이므로 22.04 에서는 agent-app 실행 시
-> `version 'GLIBC_2.38' not found` 에러가 발생한다.
-> 명세는 "Ubuntu 22.04 LTS **또는 동등 리눅스**"를 허용하므로 **Ubuntu 24.04 권장**.
+> **GLIBC 버전 — Ubuntu 22.04 에서는 agent-app 이 실행 불가**
+>
+> 제공된 `agent-app` 바이너리는 GLIBC 2.38 이상을 요구 (Ubuntu 24.04 빌드 환경 기준).
+> Ubuntu 22.04 의 GLIBC 는 2.35 이라 해당 심볼이 OS 자체에 **존재하지 않음** —
+> 실행 즉시 `version 'GLIBC_2.38' not found` 로 종료되며, 어떤 환경 변수·옵션으로도 우회 불가능.
+>
+> | OS | GLIBC | agent-app 실행 |
+> |---|---|---|
+> | Ubuntu 22.04 | 2.35 | ❌ 실행 불가 |
+> | Ubuntu 24.04 | 2.39 | ✅ |
+>
+> 명세는 "Ubuntu 22.04 LTS **또는 동등 리눅스**"를 허용하므로 **Ubuntu 24.04 사용**.
+> 단, 22.04 에서도 setup·monitor.sh·verify.sh 등 **다른 모든 명세 요구는 정상 동작**한다 —
+> agent-app 실행만 24.04 필요.
+>
 > 확인 명령: `ldd --version | head -1`
 
 ### 시나리오 A — OrbStack (로컬 평가)
