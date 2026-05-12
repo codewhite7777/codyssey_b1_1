@@ -10,7 +10,26 @@
 - **시간**: 40h
 - **핵심**: 다중 사용자 Linux 환경에서 보안·권한·자원 관측을 자동화하는 운영 엔지니어링
 
-자세한 명세는 [docs/spec.md](./docs/spec.md) 참조 (Codyssey 원본 그대로 보존).
+### 한 줄로 — 이 과제는 무엇?
+
+> agent-app(서비스) 을 안전한 환경에 배치하고, monitor.sh(CCTV) 가 매분 자동 감시하며,
+> logrotate(보존 정책) 가 기록을 관리하는 **완성된 관제 시스템 1세트를 구축**한다.
+
+### 명세 6개 영역 한눈에
+
+| # | 영역 | 핵심 | 구현 |
+|---|---|---|---|
+| 1 | SSH 보안 | Port 20022 + root 차단 | `setup/01-ssh.sh` |
+| 2 | 방화벽 | ufw 20022·15034 만 허용 | `setup/02-firewall.sh` |
+| 3 | 사용자·그룹 | admin/dev/test + common/core 역할 분리 | `setup/03-users-groups.sh` |
+| 4 | 디렉토리·권한 | AGENT_HOME 구조 + setgid | `setup/04-directories.sh` |
+| 5 | 환경 변수 | `.bash_profile` AGENT_* + 키 파일 | `setup/05-environment.sh` |
+| 6 | cron·logrotate | 매분 monitor.sh + 10MB/10 파일 | `setup/06-cron.sh` |
+
+### 명세 풀이 가이드
+
+- **원본 명세**: [docs/spec.md](./docs/spec.md) (Codyssey 원본 그대로 보존)
+- **풀이 가이드**: [**docs/spec-overview.md**](./docs/spec-overview.md) — 6개 영역 각각의 *무엇 / 왜 / 어떻게* + 회사 비유 + Mermaid 다이어그램 + 자기평가 항목 매핑
 
 ## 레포 구조
 
