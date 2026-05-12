@@ -14,14 +14,20 @@ sudo sed -i 's/^#\?Port .*/Port 20022/' "$SSHD_CONFIG"
 # 2. Root 원격 접속 차단
 sudo sed -i 's/^#\?PermitRootLogin .*/PermitRootLogin no/' "$SSHD_CONFIG"
 
-# 3. 문법 검증
+# 3. /run/sshd 보장 (Ubuntu 24.04 신규 설치 환경 대응)
+#    openssh-server 갓 설치되어 sshd 데몬이 한 번도 안 떴으면
+#    /run/sshd 가 없어 'sshd -t' 가 "Missing privilege separation directory" 로 실패.
+sudo mkdir -p /run/sshd
+
+# 4. 문법 검증
 if ! sudo sshd -t; then
     echo "[ERROR] sshd_config 문법 오류"
     exit 1
 fi
 
-# 4. 데몬 reload (기존 연결 유지)
-sudo systemctl reload ssh 2>/dev/null || sudo systemctl reload sshd
+# 5. 데몬 시작·재시작 (24.04 신규 환경은 첫 시작 필요)
+sudo systemctl enable ssh 2>/dev/null || true
+sudo systemctl restart ssh 2>/dev/null || sudo systemctl restart sshd
 
 echo "[OK] SSH 설정 적용 완료"
 echo ""
