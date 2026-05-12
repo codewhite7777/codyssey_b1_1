@@ -31,6 +31,47 @@ setup-all.sh 는 위 시스템이 돌아가는 **환경 자체를 한 번에 구
 
 ---
 
+## 어떤 환경에서? — 왜 VM (Linux Machine) 인가
+
+명세는 "Ubuntu 22.04 LTS **또는 동등 리눅스 환경**(컨테이너/VM 둘 다 허용)" 이라고 했지만, 실제로 명세 6개 요구가 모두 **시스템 데몬 수준** 이라 **VM 이 명세 의도를 그대로 실현** 할 수 있는 환경에 가깝다.
+
+```mermaid
+flowchart LR
+    A([B1-1 6개 요구]) --> B{환경 선택}
+    B -->|Docker 컨테이너| C([systemd·ufw·cron<br/>제약·우회 필요])
+    B -->|Linux Machine VM| D([완전 동작<br/>★ 명세 의도 그대로])
+
+    style A fill:#dbe9ff,stroke:#5a8fc0,stroke-width:2px
+    style C fill:#ffe6cc,stroke:#c08f5a,stroke-width:2px
+    style D fill:#ccffcc,stroke:#5ac08f,stroke-width:2px
+```
+
+### 명세 요구 ↔ 시스템 기능 매핑
+
+| 명세 요구 | 필요한 시스템 기능 | Docker 컨테이너 | **VM** |
+|---|---|---|---|
+| SSH 포트 변경 + sshd 재시작 (#1) | systemd 로 sshd 데몬 관리 | 기본 비활성 (특수 이미지 필요) | ✅ |
+| ufw 방화벽 (#2) | netfilter·iptables 직접 조작 | iptables 호스트와 공유 → 제약 | ✅ |
+| cron 매분 실행 (#6) | cron 데몬 + systemd timer | 기본 안 돌아감, 추가 설정 필요 | ✅ |
+| logrotate (#6) | `/etc/cron.daily/` 자동 실행 | systemd 필요 | ✅ |
+
+### 회사 비유
+
+- **Docker 컨테이너** = 공유 사무실의 **책상 한 자리**. 인프라(시스템 데몬·방화벽·전화선)는 건물 전체와 공유, 자기 자리만 격리. 작은 작업은 가능하지만 "내가 직접 보안·전화선 깔겠다" 같은 요구는 제약 많음.
+- **Linux Machine (VM)** = **독립 사무실**. 인프라를 자기가 다 갖춤. 시스템 데몬·방화벽·cron 모두 자기 것 → 명세의 "서버 운영 환경 구축" 의도 그대로.
+
+### OrbStack 의 강점
+
+OrbStack 의 **Linux Machine** 은 Apple Silicon Mac 위에서 거의 컨테이너 속도로 부팅되는 가벼운 VM 이라, "VM 은 무겁다" 는 통념이 사실상 해당 없음. 한 줄로 평가 클러스터와 거의 동일한 amd64 Ubuntu 환경 확보 가능:
+
+```bash
+orb create --arch amd64 ubuntu:24.04 codyssey-b1-1
+```
+
+> 자세한 Docker 컨테이너 vs VM 비교 표·추가 설정 부담은 [README 의 "왜 VM 인가" 섹션](../README.md#왜-vm-linux-machine-인가--docker-컨테이너가-아닌-이유) 참조.
+
+---
+
 ## 6개 요구 영역 한눈에
 
 | # | 영역 | 명세 핵심 | 구현 |
