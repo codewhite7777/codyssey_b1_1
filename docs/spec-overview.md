@@ -12,15 +12,15 @@
 
 ```mermaid
 flowchart LR
-    A["agent-app<br/>(Codyssey 제공)"] -->|감시 대상| B["monitor.sh<br/>(★ 학생 작성)"]
-    B --> C["monitor.log<br/>분 단위 자원 측정"]
-    D["setup-all.sh<br/>(환경 구축)"] --> E["사용자·권한·네트워크·cron"]
+    A([agent-app<br/>감시 대상]) -->|관찰| B([monitor.sh<br/>★ CCTV])
+    B --> C([monitor.log<br/>분 단위 보고서])
 
-    style A fill:#cce5ff
-    style B fill:#ffe6cc
-    style C fill:#ccffcc
-    style D fill:#ffe6cc
+    style A fill:#dbe9ff,stroke:#5a8fc0,stroke-width:2px
+    style B fill:#ffe6cc,stroke:#c08f5a,stroke-width:2px
+    style C fill:#ccffcc,stroke:#5ac08f,stroke-width:2px
 ```
+
+setup-all.sh 는 위 시스템이 돌아가는 **환경 자체를 한 번에 구축** — 사용자·권한·방화벽·cron 등.
 
 - **agent-app** — 회사의 운영 중인 서비스 (예: 결제 서버). Codyssey 제공
 - **monitor.sh** — 그 서비스를 24시간 감시하는 **CCTV 시스템** (학생 핵심 산출물)
@@ -55,15 +55,16 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    A["봇이 22 포트 두드림"] --> B{포트가 22?}
-    B -->|아니오 = 20022| C["✅ 표면 줄임"]
-    B -->|예| D["계속 시도"]
-    E["root 로 직접 로그인"] --> F{PermitRootLogin?}
-    F -->|no| G["✅ 차단"]
+    A([봇 자동 공격]) --> B{포트}
+    B -->|22 기본| C([★ 표적 노출])
+    B -->|20022 변경| D([✅ 표면 축소])
 
-    style C fill:#ccffcc
-    style G fill:#ccffcc
+    style A fill:#dbe9ff,stroke:#5a8fc0,stroke-width:2px
+    style C fill:#ffd6d6,stroke:#c05a5a,stroke-width:2px
+    style D fill:#ccffcc,stroke:#5ac08f,stroke-width:2px
 ```
+
+root 차단은 보조 방어: 사용자명조차 비공개라 표적 면적이 한 번 더 줄어들고, sudo 사용이 모두 감사 로그에 남음.
 
 회사 비유:
 - 22 포트 = **모두가 아는 정문 위치** → 20022로 옮겨 봇이 못 찾음
@@ -92,14 +93,15 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    A["외부 트래픽"] --> B{방화벽}
-    B -->|20022| C["✅ SSH"]
-    B -->|15034| D["✅ agent-app"]
-    B -->|그 외| E["❌ deny"]
+    A([외부 트래픽]) --> B{방화벽}
+    B -->|20022| C([✅ SSH 허용])
+    B -->|15034| D([✅ agent-app 허용])
+    B -->|그 외| E([❌ deny])
 
-    style C fill:#ccffcc
-    style D fill:#ccffcc
-    style E fill:#ffe6cc
+    style A fill:#dbe9ff,stroke:#5a8fc0,stroke-width:2px
+    style C fill:#ccffcc,stroke:#5ac08f,stroke-width:2px
+    style D fill:#ccffcc,stroke:#5ac08f,stroke-width:2px
+    style E fill:#ffd6d6,stroke:#c05a5a,stroke-width:2px
 ```
 
 회사 비유: **건물 1층 안내 데스크** 가 방문객 통제. 20022호(관리실)와 15034호(서비스부)만 안내, 나머지 호실은 출입 불가.
@@ -130,14 +132,18 @@ agent-core   ⊇ {agent-admin, agent-dev}                (test 차단)
 
 ```mermaid
 flowchart LR
-    A[agent-admin] --> B[agent-common]
-    A --> C[agent-core]
-    D[agent-dev] --> B
-    D --> C
-    E[agent-test] --> B
-    E -.X.-> C
+    A([agent-admin]) --> CM([agent-common])
+    A --> CR([agent-core])
+    B([agent-dev]) --> CM
+    B --> CR
+    C([agent-test]) --> CM
+    C -. ❌ 차단 .-> CR
 
-    style C fill:#ffe6cc
+    style A fill:#dbe9ff,stroke:#5a8fc0,stroke-width:2px
+    style B fill:#dbe9ff,stroke:#5a8fc0,stroke-width:2px
+    style C fill:#dbe9ff,stroke:#5a8fc0,stroke-width:2px
+    style CM fill:#ccffcc,stroke:#5ac08f,stroke-width:2px
+    style CR fill:#ffe6cc,stroke:#c08f5a,stroke-width:2px
 ```
 
 회사 비유 (세 직급):
@@ -178,15 +184,22 @@ flowchart LR
 ### 왜
 **민감 자원 (api_keys, /var/log) 은 agent-core 만**, 공용 자원 (upload_files) 은 agent-common 도 OK. 그리고 **setgid 비트** 로 새로 만들어지는 파일이 자동으로 부모 디렉토리의 그룹을 상속.
 
+각 디렉토리의 접근 정책:
+
+| 디렉토리 | 모드 | 그룹 | 누가 접근? |
+|---|---|---|---|
+| `upload_files/` | `0770` | agent-common | admin·dev·test 모두 RW |
+| `api_keys/` | `0750` | agent-core | admin·dev 만, test ❌ |
+| `/var/log/agent-app/` | `2770` (setgid) | agent-core | admin·dev RW + 신규 파일 자동 상속 |
+
+`setgid` 비트의 동작:
+
 ```mermaid
 flowchart LR
-    A["upload_files<br/>(0770, agent-common)"] --> B["3명 모두 RW 가능"]
-    C["api_keys<br/>(0750, agent-core)"] --> D["admin·dev 만 접근<br/>test 차단"]
-    E["/var/log/agent-app<br/>(2770, agent-core, setgid)"] --> F["새 로그 파일도<br/>자동 agent-core 그룹"]
+    A([부모 디렉토리<br/>2770, agent-core]) -->|새 파일 생성| B([자동 그룹 상속<br/>agent-core])
 
-    style B fill:#ccffcc
-    style D fill:#ffe6cc
-    style F fill:#cce5ff
+    style A fill:#ffe6cc,stroke:#c08f5a,stroke-width:2px
+    style B fill:#ccffcc,stroke:#5ac08f,stroke-width:2px
 ```
 
 회사 비유:
@@ -226,12 +239,14 @@ chmod 0440 $AGENT_HOME/api_keys/t_secret.key   # 소유자·그룹만 read
 
 ```mermaid
 flowchart LR
-    A["agent-admin SSH 로그인"] --> B[".bash_profile 자동 source"]
-    B --> C["AGENT_* 5개 set"]
-    C --> D["agent-app 실행"]
-    D --> E["환경 변수 통해<br/>각 자원 위치 알아냄"]
+    A([SSH 로그인]) --> B([.bash_profile<br/>자동 source])
+    B --> C([AGENT_* 환경 set])
+    C --> D([agent-app·monitor.sh<br/>실행])
 
-    style C fill:#ccffcc
+    style A fill:#dbe9ff,stroke:#5a8fc0,stroke-width:2px
+    style B fill:#ffe6cc,stroke:#c08f5a,stroke-width:2px
+    style C fill:#ccffcc,stroke:#5ac08f,stroke-width:2px
+    style D fill:#dbe9ff,stroke:#5a8fc0,stroke-width:2px
 ```
 
 회사 비유: **출근 첫날 받는 안내문** (.bash_profile) 에 사번·부서·도구 위치 모두 적혀 있음. 매번 어디 있는지 외울 필요 X.
@@ -252,19 +267,31 @@ flowchart LR
 
 이 영역이 B1-1의 **꽃**. 세 가지가 맞물려 동작:
 
+**monitor.sh 의 1회 사이클**:
+
 ```mermaid
 flowchart LR
-    A["cron 매분"] --> B["monitor.sh 실행"]
-    B --> C["health check"]
-    C --> D["CPU/MEM/DISK 측정"]
-    D --> E["monitor.log 한 줄 추가"]
-    E --> F["10 MB 초과?"]
-    F -->|예| G["logrotate 회전"]
-    F -->|아니오| H["다음 분 대기"]
+    A([cron 매분]) --> B([health check])
+    B -->|통과| C([자원 측정])
+    C --> D([monitor.log<br/>한 줄 추가])
+    B -->|실패| E([ALERT 출력<br/>exit 1])
 
-    style B fill:#ffe6cc
-    style E fill:#ccffcc
-    style G fill:#cce5ff
+    style A fill:#dbe9ff,stroke:#5a8fc0,stroke-width:2px
+    style B fill:#ffe6cc,stroke:#c08f5a,stroke-width:2px
+    style D fill:#ccffcc,stroke:#5ac08f,stroke-width:2px
+    style E fill:#ffd6d6,stroke:#c05a5a,stroke-width:2px
+```
+
+**logrotate 의 회전 정책** (별도 trigger):
+
+```mermaid
+flowchart LR
+    A([cron.daily logrotate]) --> B{monitor.log<br/>≥ 10 MB?}
+    B -->|예| C([회전 + 압축<br/>최대 10개 보존])
+    B -->|아니오| D([대기])
+
+    style A fill:#dbe9ff,stroke:#5a8fc0,stroke-width:2px
+    style C fill:#ccffcc,stroke:#5ac08f,stroke-width:2px
 ```
 
 ### 6-1. cron 매분 등록
