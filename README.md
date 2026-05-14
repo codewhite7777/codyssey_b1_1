@@ -31,6 +31,72 @@
 - **원본 명세**: [docs/spec.md](./docs/spec.md) (Codyssey 원본 그대로 보존)
 - **풀이 가이드**: [**docs/spec-overview.md**](./docs/spec-overview.md) — 6개 영역 각각의 *무엇 / 왜 / 어떻게* + 회사 비유 + Mermaid 다이어그램 + 자기평가 항목 매핑
 
+## 환경 — 왜 VM 이고 컨테이너가 아닌가
+
+명세는 "Ubuntu 22.04 LTS 또는 동등 리눅스(**컨테이너/VM**)" 를 모두 허용하지만, 실제로 명세 6개 요구가 모두 **시스템 데몬·커널 기능**이라 **VM 이 의도를 그대로 실현하는 유일한 환경**에 가깝다.
+
+```mermaid
+flowchart LR
+    A([B1-1 명세 6개 요구]) --> B{환경 선택}
+    B -->|Docker 컨테이너| C([systemd·ufw·cron·iptables<br/>제약·우회 필요])
+    B -->|Linux Machine VM| D([완전 동작<br/>★ 명세 의도 그대로])
+
+    style A fill:#dbe9ff,stroke:#5a8fc0,stroke-width:2px
+    style C fill:#ffd6d6,stroke:#c05a5a,stroke-width:2px
+    style D fill:#ccffcc,stroke:#5ac08f,stroke-width:2px
+```
+
+### 명세 6 영역 요구 ↔ 시스템 능력 매핑
+
+| # | 명세 요구 | 필요한 시스템 능력 | Docker | **VM** |
+|---|---|---|:---:|:---:|
+| 1 | SSH 포트 변경 + sshd 재시작 | systemd 로 sshd 데몬 관리 | ⚠ 특수 이미지 | ✅ |
+| 2 | ufw 방화벽 | netfilter·iptables 직접 조작 | ⚠ 호스트와 공유 | ✅ |
+| 3 | 사용자·그룹 생성 | useradd, NSS, /etc/passwd 쓰기 | ✅ | ✅ |
+| 4 | 디렉토리·setgid | 시스템 디렉토리 권한 | ✅ | ✅ |
+| 5 | 환경 변수 (`.bash_profile`) | 사용자 홈 파일 쓰기 | ✅ | ✅ |
+| 6 | cron 매분 + logrotate | cron 데몬 + cron.daily | ❌ 기본 안 돌아감 | ✅ |
+
+→ **#1·#2·#6 의 3 항목이 컨테이너에선 본질적 제약**. 우회는 가능하지만 학습 본질에서 벗어남.
+
+### Docker 컨테이너 vs Linux Machine (VM) 정면 비교
+
+| 항목 | Docker 컨테이너 | **Linux Machine (VM)** ★ |
+|---|---|---|
+| **systemd (init)** | 기본 비활성 — `--privileged` + systemd-enabled 이미지 필요 | 완전 동작 |
+| **sshd 데몬** | systemd 없이는 foreground 실행 등 까다로움 | `systemctl start ssh` 한 줄 |
+| **ufw 방화벽** | iptables 를 호스트와 공유 → 권한 제약·다른 컨테이너와 간섭 | 머신 독립적, 자유롭게 조작 |
+| **cron 데몬** | 기본 안 돌아감 — 별도 시작 스크립트 필요 | 설치 후 즉시 동작 |
+| **환경 동등성** | 컨테이너 ≠ 진짜 서버 | **클러스터 평가 환경과 거의 동일** |
+| **OrbStack 생성** | `docker run ...` | `orb create --arch amd64 ubuntu:24.04 ...` |
+| **부팅 속도** | ~1초 | OrbStack VM 도 **수 초** (Apple Silicon Mac 기준) |
+
+### 회사 비유
+
+| 환경 | 비유 |
+|---|---|
+| **Docker 컨테이너** | 공유 사무실의 **책상 한 자리**. 인프라(전화선·CCTV·소방 시스템)는 건물 전체와 공유, 자기 책상만 격리. 작은 작업은 OK 지만 "직접 전화선 깔겠다·소방 시스템 만지겠다" 같은 요구는 제약 많음. |
+| **Linux Machine (VM)** | **독립 사무실**. 전화선·CCTV·소방 모두 자기 것. 명세의 *서버 운영 환경 구축* 의도 그대로 실현 가능. |
+
+### "그래도 컨테이너로 하고 싶다면"
+
+가능은 하지만 비권장. 다음 추가 작업이 필요하다:
+
+- `--privileged` 또는 정밀한 capability 부여 (`--cap-add=NET_ADMIN`, `--cap-add=SYS_ADMIN`)
+- systemd 가 동작하는 base 이미지 (예: `jrei/systemd-ubuntu`)
+- cgroup·`/sys/fs/cgroup` 마운트 옵션 조정
+- ufw 가 호스트 iptables 와 충돌하지 않게 격리
+
+이 모든 추가 작업이 **명세 학습 본질(시스템 운영)에서 벗어난 노이즈**다. 평가 환경 동일성도 떨어진다.
+
+### 결론
+
+> **OrbStack Linux Machine 또는 Codyssey 평가 클러스터 — 둘 다 진짜 systemd Ubuntu VM. 컨테이너 모드는 명세 의도와 안 맞으니 사용하지 않는다.**
+>
+> Apple Silicon Mac 에서도 OrbStack VM 은 **컨테이너 수준의 부팅 속도**라 "VM 은 무겁다" 는 통념이 사실상 해당 없음.
+
+OrbStack VM 생성·진입의 구체적 흐름은 **[시나리오 A](#시나리오-a--orbstack-로컬-평가)** 참조.
+
 ## 레포 구조
 
 ```
@@ -125,38 +191,7 @@ cd ~
 > [!NOTE]
 > OrbStack은 Mac 사용자와 같은 이름의 사용자를 VM에 자동 생성한다(`sudo NOPASSWD` 포함). 진입 직후 시작 위치가 `/Users/<name>`인 이유는 Mac 홈이 자동 마운트되기 때문 — `cd ~`로 VM의 실제 홈(`/home/<name>`)으로 이동.
 
-<details>
-<summary><b>왜 Docker 컨테이너가 아니라 VM인가? (펼쳐 보기)</b></summary>
-
-명세는 "컨테이너 또는 VM"을 모두 허용하지만, 이 과제의 요구가 **시스템 데몬 중심**이라 실용적으로는 **VM이 표준**이다.
-
-명세 요구 ↔ 시스템 기능 매핑:
-
-| 명세 요구 | 필요한 시스템 기능 |
-|---|---|
-| SSH 포트 변경 + sshd 재시작 (#1) | systemd로 sshd 데몬 관리 |
-| ufw 방화벽 (#2) | netfilter/iptables 직접 조작 |
-| cron 매분 실행 (#6) | cron 데몬 + systemd timer |
-| logrotate (#6) | `/etc/cron.daily/` 자동 실행 |
-
-이 4개 요구가 모두 운영체제 수준의 데몬·커널 기능을 필요로 한다. Docker 컨테이너는 본래 "단일 애플리케이션 실행"에 최적화된 구조라 위 기능들이 기본 비활성이거나 제약된다.
-
-| 항목 | Docker 컨테이너 | **Linux Machine (VM)** ★ |
-|---|---|---|
-| systemd (init) | 기본 비활성 — `--privileged` + 특수 이미지 필요 | 완전 동작 |
-| sshd 데몬 | systemd 없이는 까다로움 (foreground 실행) | `systemctl start ssh` 한 줄 |
-| ufw 방화벽 | iptables를 호스트와 공유 → 권한 제약·간섭 | 머신 독립적, 자유롭게 조작 |
-| cron 데몬 | 기본 안 돌아감 — 별도 시작 스크립트 필요 | 설치 후 즉시 동작 |
-| 환경 동등성 | 컨테이너 ≠ 진짜 서버 | 클러스터 평가 환경과 거의 동일 |
-| OrbStack 생성 명령 | `docker run ...` | `orb create ubuntu:22.04 <이름>` |
-
-컨테이너로 진행하면 학습 본질보다 환경 설정 부담이 더 커지고, 클러스터의 실제 평가 환경(Ubuntu 22.04 VM)과 동일성도 떨어진다.
-
-**컨테이너로 굳이 진행한다면** 다음 추가 작업이 필요하다 — `--privileged` 또는 capability 부여(`--cap-add=NET_ADMIN`, `--cap-add=SYS_ADMIN`), systemd-enabled base 이미지(예: `jrei/systemd-ubuntu`), cgroup 마운트 옵션 조정 등.
-
-OrbStack의 **Linux Machine은 가벼운 VM**이다. Mac 위에서 컨테이너 수준의 부팅 속도를 내면서도 진짜 systemd Ubuntu를 제공하므로, "VM은 무겁다"는 통념은 OrbStack에서는 사실상 해당되지 않는다.
-
-</details>
+> 환경 선택의 *왜* 는 README 앞쪽의 **[환경 — 왜 VM 이고 컨테이너가 아닌가](#환경--왜-vm-이고-컨테이너가-아닌가)** 섹션 참조.
 
 ### 시나리오 B — 클러스터/원격 Ubuntu (실제 평가)
 
