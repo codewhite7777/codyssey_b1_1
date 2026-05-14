@@ -15,6 +15,7 @@
 #  의존  : awk (gawk 권장 — match 의 3번째 인자 사용).
 #
 #  학습 노트: cron-fundamentals, log-rotation
+#  ★ 줄별·문법 풀이: docs/scripts-walkthrough/report.md
 # ═══════════════════════════════════════════════════════════════════
 #
 #  쓰인 셸 문법:

@@ -15,6 +15,7 @@
 #    - process-and-signals : health check 3단의 의도
 #    - cpu/memory/disk-measurement : 자원 측정 도구별 함정
 #    - cron-environment-gotchas : PATH·env 명시 이유
+#  ★ 줄별·문법 풀이: docs/scripts-walkthrough/monitor.md
 #  검증:
 #    수동 1회 실행 : sudo -u agent-admin $AGENT_HOME/bin/monitor.sh
 #    cron 누적 확인 : sudo tail /var/log/agent-app/monitor.log

@@ -11,6 +11,7 @@
 #  사용  : sudo bash setup/setup-all.sh
 #
 #  학습 노트: 각 sub 스크립트의 학습 노트 참조.
+#  ★ 줄별·문법 풀이: docs/scripts-walkthrough/setup-all.md
 # ═══════════════════════════════════════════════════════════════════
 #
 #  쓰인 셸 문법:
