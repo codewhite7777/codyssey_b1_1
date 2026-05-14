@@ -27,7 +27,9 @@ flowchart LR
     B([agent-dev]) --> CM
     B --> CR
     C([agent-test]) --> CM
-    C -. ❌ 차단 .-> CR
+    C -.-> CR
+
+    linkStyle 5 stroke:#c05a5a,stroke-width:2px,stroke-dasharray:5
 
     style A fill:#dbe9ff,stroke:#5a8fc0,stroke-width:2px
     style B fill:#dbe9ff,stroke:#5a8fc0,stroke-width:2px
@@ -35,6 +37,8 @@ flowchart LR
     style CM fill:#ccffcc,stroke:#5ac08f,stroke-width:2px
     style CR fill:#ffe6cc,stroke:#c08f5a,stroke-width:2px
 ```
+
+→ **빨간 점선 = agent-test 의 agent-core 접근 차단** (명세 요구).
 
 | 사용자 | common | core | 의미 |
 |---|---|---|---|
