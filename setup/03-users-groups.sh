@@ -11,6 +11,7 @@
 #  의존  : 시스템 기본 도구(useradd, groupadd, usermod, id, getent).
 #
 #  학습 노트: users-and-groups, posix-acl
+#  ★ 줄별·문법 풀이: docs/scripts-walkthrough/03-users-groups.md
 #  검증:
 #    id agent-admin       → 그룹 목록에 common + core
 #    id agent-test        → common 만, core 없음

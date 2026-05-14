@@ -30,6 +30,7 @@
 
 - **원본 명세**: [docs/spec.md](./docs/spec.md) (Codyssey 원본 그대로 보존)
 - **풀이 가이드**: [**docs/spec-overview.md**](./docs/spec-overview.md) — 6개 영역 각각의 *무엇 / 왜 / 어떻게* + 회사 비유 + Mermaid 다이어그램 + 자기평가 항목 매핑
+- **스크립트 줄별·문법 풀이**: [**docs/scripts-walkthrough/**](./docs/scripts-walkthrough/) — 각 `.sh` 파일의 모든 줄·옵션·정규식을 처음 보는 사람도 이해할 수 있게 분해 (옵션 표·Mermaid·회사 비유·FAQ 포함)
 
 ## 환경 — 왜 VM 이고 컨테이너가 아닌가
 

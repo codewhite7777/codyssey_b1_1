@@ -13,6 +13,7 @@
 #  학습 노트:
 #    - ssh-deep-dive  : 명세 의도·SSH 동작 원리
 #    - sshd-config    : 설정 파일 옵션 자세히
+#  ★ 줄별·문법 풀이: docs/scripts-walkthrough/01-ssh.md
 #  검증:
 #    sudo sshd -T | grep -E '^(port|permitrootlogin)'
 #    sudo ss -tulnp | grep ':20022 '

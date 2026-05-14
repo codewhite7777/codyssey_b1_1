@@ -10,6 +10,7 @@
 #  의존  : ufw 패키지 (없으면 자동 설치).
 #
 #  학습 노트: firewall-ufw-vs-firewalld, ports-and-listening
+#  ★ 줄별·문법 풀이: docs/scripts-walkthrough/02-firewall.md
 #  검증:
 #    sudo ufw status verbose
 # ═══════════════════════════════════════════════════════════════════
