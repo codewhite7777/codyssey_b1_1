@@ -13,6 +13,7 @@
 #  의존  : 영역 3·4 먼저 (agent-admin, api_keys 디렉토리 존재).
 #
 #  학습 노트: shell-environment, cron-environment-gotchas
+#  ★ 줄별·문법 풀이: docs/scripts-walkthrough/05-environment.md
 #  검증:
 #    sudo -u agent-admin bash -lc 'env | grep ^AGENT_'   → 5개 변수
 #    ls -l $AGENT_HOME/api_keys/t_secret.key             → 0440

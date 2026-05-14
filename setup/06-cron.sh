@@ -13,6 +13,7 @@
 #          가능 (배포는 setup-all.sh 에서 처리).
 #
 #  학습 노트: cron-fundamentals, log-rotation, cron-environment-gotchas
+#  ★ 줄별·문법 풀이: docs/scripts-walkthrough/06-cron.md
 #  검증:
 #    sudo -u agent-admin crontab -l           → monitor.sh 줄 보임
 #    sudo logrotate -d /etc/logrotate.d/agent-app   → "rotating pattern"

@@ -12,6 +12,7 @@
 #  의존  : 영역 3 (사용자·그룹) 먼저 실행되어 있어야 함.
 #
 #  학습 노트: file-permissions, filesystem-tree
+#  ★ 줄별·문법 풀이: docs/scripts-walkthrough/04-directories.md
 #  검증:
 #    ls -ld /home/agent-admin/agent-app/*
 #    sudo -u agent-test ls .../api_keys   → EACCES 기대
