@@ -9,10 +9,10 @@
 
 ```mermaid
 flowchart LR
-    A([설정 파일 Port 수정]) --> B([root 로그인 차단])
-    B --> C([/run/sshd 보장])
-    C --> D([sshd -t 문법 검증])
-    D --> E([systemctl restart])
+    A(["설정 파일 Port 수정"]) --> B(["root 로그인 차단"])
+    B --> C(["/run/sshd 보장"])
+    C --> D(["sshd -t 문법 검증"])
+    D --> E(["systemctl restart"])
 
     style A fill:#dbe9ff,stroke:#5a8fc0,stroke-width:2px
     style D fill:#ffe6cc,stroke:#c08f5a,stroke-width:2px
@@ -226,9 +226,9 @@ bash 조건 분기 — `cmd` 가 **실패**하면 then 블록 실행.
 
 ```mermaid
 flowchart LR
-    A([sed 로 수정]) --> B{문법 OK?}
-    B -->|예| C([restart 안전])
-    B -->|아니오| D([★ restart 시 sshd 깨짐<br/>원격 접속 끊김])
+    A(["sed 로 수정"]) --> B{문법 OK?}
+    B -->|예| C(["restart 안전"])
+    B -->|아니오| D(["★ restart 시 sshd 깨짐<br/>원격 접속 끊김"])
 
     style C fill:#ccffcc,stroke:#5ac08f,stroke-width:2px
     style D fill:#ffd6d6,stroke:#c05a5a,stroke-width:2px

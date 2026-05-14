@@ -9,9 +9,9 @@
 
 ```mermaid
 flowchart LR
-    A([check 함수 정의]) --> B([7개 영역 × 5개 평균])
-    B --> C([실패 카운트])
-    C --> D([종합 결과 + exit])
+    A(["check 함수 정의"]) --> B(["7개 영역 × 5개 평균"])
+    B --> C(["실패 카운트"])
+    C --> D(["종합 결과 + exit"])
 
     style A fill:#dbe9ff,stroke:#5a8fc0,stroke-width:2px
     style B fill:#ffe6cc,stroke:#c08f5a,stroke-width:2px

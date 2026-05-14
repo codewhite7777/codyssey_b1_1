@@ -9,9 +9,9 @@
 
 ```mermaid
 flowchart LR
-    A([그룹 2개 생성]) --> B([사용자 3명 생성])
-    B --> C([멤버십 차등 할당])
-    C --> D([검증])
+    A(["그룹 2개 생성"]) --> B(["사용자 3명 생성"])
+    B --> C(["멤버십 차등 할당"])
+    C --> D(["검증"])
 
     style A fill:#dbe9ff,stroke:#5a8fc0,stroke-width:2px
     style C fill:#ffe6cc,stroke:#c08f5a,stroke-width:2px
@@ -22,11 +22,11 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    A([agent-admin]) --> CM([agent-common])
-    A --> CR([agent-core])
-    B([agent-dev]) --> CM
+    A(["agent-admin"]) --> CM(["agent-common"])
+    A --> CR(["agent-core"])
+    B(["agent-dev"]) --> CM
     B --> CR
-    C([agent-test]) --> CM
+    C(["agent-test"]) --> CM
     C -.-> CR
 
     linkStyle 5 stroke:#c05a5a,stroke-width:2px,stroke-dasharray:5

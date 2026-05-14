@@ -164,7 +164,7 @@ sudo chmod 2770 "$AGENT_HOME/upload_files"
 
 ```mermaid
 flowchart LR
-    A([부모 디렉토리<br/>2770, agent-core]) -->|새 파일 생성| B([자동 그룹 상속<br/>agent-core])
+    A(["부모 디렉토리<br/>2770, agent-core"]) -->|새 파일 생성| B(["자동 그룹 상속<br/>agent-core"])
 
     style A fill:#ffe6cc,stroke:#c08f5a,stroke-width:2px
     style B fill:#ccffcc,stroke:#5ac08f,stroke-width:2px

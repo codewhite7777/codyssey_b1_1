@@ -9,10 +9,10 @@
 
 ```mermaid
 flowchart LR
-    A([ufw 설치 확인]) --> B([reset 초기화])
-    B --> C([기본 정책: 인바운드 deny])
-    C --> D([20022·15034 허용])
-    D --> E([enable])
+    A(["ufw 설치 확인"]) --> B(["reset 초기화"])
+    B --> C(["기본 정책: 인바운드 deny"])
+    C --> D(["20022·15034 허용"])
+    D --> E(["enable"])
 
     style A fill:#dbe9ff,stroke:#5a8fc0,stroke-width:2px
     style C fill:#ffe6cc,stroke:#c08f5a,stroke-width:2px
@@ -132,9 +132,9 @@ sudo ufw default allow outgoing
 
 ```mermaid
 flowchart LR
-    A([외부 트래픽]) --> B{정책}
-    B -->|허용 포트| C([✅ 통과])
-    B -->|그 외| D([❌ deny default])
+    A(["외부 트래픽"]) --> B{정책}
+    B -->|허용 포트| C(["✅ 통과"])
+    B -->|그 외| D(["❌ deny default"])
 
     style C fill:#ccffcc,stroke:#5ac08f,stroke-width:2px
     style D fill:#ffd6d6,stroke:#c05a5a,stroke-width:2px

@@ -8,9 +8,9 @@
 
 ```mermaid
 flowchart LR
-    A([01~06 순차 실행]) --> B([monitor.sh·report.sh 배포])
-    B --> C([verify.sh 35개 검증])
-    C --> D([다음 단계 안내])
+    A(["01~06 순차 실행"]) --> B(["monitor.sh·report.sh 배포"])
+    B --> C(["verify.sh 35개 검증"])
+    C --> D(["다음 단계 안내"])
 
     style A fill:#dbe9ff,stroke:#5a8fc0,stroke-width:2px
     style B fill:#ffe6cc,stroke:#c08f5a,stroke-width:2px

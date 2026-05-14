@@ -9,12 +9,12 @@
 
 ```mermaid
 flowchart LR
-    A([1.프로세스]) --> B([2.상태])
-    B --> C([3.포트 LISTEN])
-    C --> D([4.방화벽])
-    D --> E([5·6·7.자원])
-    E --> F([8.임계값 경고])
-    F --> G([9.로그 누적])
+    A(["1.프로세스"]) --> B(["2.상태"])
+    B --> C(["3.포트 LISTEN"])
+    C --> D(["4.방화벽"])
+    D --> E(["5·6·7.자원"])
+    E --> F(["8.임계값 경고"])
+    F --> G(["9.로그 누적"])
 
     style A fill:#dbe9ff,stroke:#5a8fc0,stroke-width:2px
     style E fill:#ffe6cc,stroke:#c08f5a,stroke-width:2px

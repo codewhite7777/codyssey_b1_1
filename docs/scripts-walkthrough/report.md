@@ -9,10 +9,10 @@
 
 ```mermaid
 flowchart LR
-    A([파일 존재 확인]) --> B([시간 범위 필터])
-    B --> C([샘플 수 카운트])
-    C --> D([CPU/MEM/DISK 각각 통계])
-    D --> E([출력])
+    A(["파일 존재 확인"]) --> B(["시간 범위 필터"])
+    B --> C(["샘플 수 카운트"])
+    C --> D(["CPU/MEM/DISK 각각 통계"])
+    D --> E(["출력"])
 
     style A fill:#dbe9ff,stroke:#5a8fc0,stroke-width:2px
     style D fill:#ffe6cc,stroke:#c08f5a,stroke-width:2px

@@ -9,9 +9,9 @@
 
 ```mermaid
 flowchart LR
-    A([키 파일 생성]) --> B([.bash_profile 정화])
-    B --> C([환경 변수 등록])
-    C --> D([검증])
+    A(["키 파일 생성"]) --> B([".bash_profile 정화"])
+    B --> C(["환경 변수 등록"])
+    C --> D(["검증"])
 
     style A fill:#dbe9ff,stroke:#5a8fc0,stroke-width:2px
     style C fill:#ffe6cc,stroke:#c08f5a,stroke-width:2px
@@ -182,10 +182,10 @@ sudo sed -i '/^# --- agent-app env ---/,/^# --- end agent-app env ---/d' "$BASH_
 
 ```mermaid
 flowchart LR
-    A([첫 실행]) --> B([export AGENT_ 라인 없음])
-    C([재실행]) --> D([기존 export 라인 삭제])
-    D --> E([기존 마커 블록 삭제])
-    E --> F([clean 상태])
+    A(["첫 실행"]) --> B(["export AGENT_ 라인 없음"])
+    C(["재실행"]) --> D(["기존 export 라인 삭제"])
+    D --> E(["기존 마커 블록 삭제"])
+    E --> F(["clean 상태"])
 
     style F fill:#ccffcc,stroke:#5ac08f,stroke-width:2px
 ```

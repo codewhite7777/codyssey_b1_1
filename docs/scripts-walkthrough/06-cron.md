@@ -9,11 +9,11 @@
 
 ```mermaid
 flowchart LR
-    A([logrotate 정책 설치]) --> B([logrotate 문법 검증])
-    B --> C([crontab 임시 파일 준비])
-    C --> D([기존 monitor.sh 줄 제거])
-    D --> E([새 cron 라인 추가])
-    E --> F([crontab 등록])
+    A(["logrotate 정책 설치"]) --> B(["logrotate 문법 검증"])
+    B --> C(["crontab 임시 파일 준비"])
+    C --> D(["기존 monitor.sh 줄 제거"])
+    D --> E(["새 cron 라인 추가"])
+    E --> F(["crontab 등록"])
 
     style A fill:#dbe9ff,stroke:#5a8fc0,stroke-width:2px
     style C fill:#ffe6cc,stroke:#c08f5a,stroke-width:2px
@@ -70,9 +70,9 @@ EOF
 
 ```mermaid
 flowchart LR
-    A([원본 monitor.log<br/>10 MB+]) --> B([cp 로 .1 백업])
-    B --> C([원본을 truncate<br/>크기 0])
-    C --> D([앱은 같은 fd 로<br/>계속 쓰기])
+    A(["원본 monitor.log<br/>10 MB+"]) --> B(["cp 로 .1 백업"])
+    B --> C(["원본을 truncate<br/>크기 0"])
+    C --> D(["앱은 같은 fd 로<br/>계속 쓰기"])
 
     style A fill:#dbe9ff,stroke:#5a8fc0,stroke-width:2px
     style C fill:#ffe6cc,stroke:#c08f5a,stroke-width:2px
@@ -162,10 +162,10 @@ mktemp 기본 0600 → root 가 만든 파일을 **agent-admin 이 못 읽음**.
 
 ```mermaid
 flowchart LR
-    A([root 가 mktemp]) --> B([파일 0600 root:root])
-    B --> C([sudo -u agent-admin crontab FILE])
-    C -->|"agent-admin 못 읽음"| D([Permission denied])
-    E([chmod 0644 한 줄]) --> F([agent-admin 도 read OK])
+    A(["root 가 mktemp"]) --> B(["파일 0600 root:root"])
+    B --> C(["sudo -u agent-admin crontab FILE"])
+    C -->|"agent-admin 못 읽음"| D(["Permission denied"])
+    E(["chmod 0644 한 줄"]) --> F(["agent-admin 도 read OK"])
 
     style D fill:#ffd6d6,stroke:#c05a5a,stroke-width:2px
     style F fill:#ccffcc,stroke:#5ac08f,stroke-width:2px
