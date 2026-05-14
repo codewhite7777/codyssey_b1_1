@@ -210,16 +210,46 @@ setup-all.sh는 6단계를 순차 실행하고 마지막에 verify.sh로 자체 
 > [!WARNING]
 > 이 단계에서 sshd 포트가 22 → 20022로 변경된다. SSH 원격 접속 환경이라면 **현재 세션은 유지되지만 새 접속은 `ssh -p 20022`로** 들어가야 한다. 안전을 위해 다른 터미널에서 미리 세션을 하나 더 열어두기를 권장. (OrbStack은 `orb shell`이 sshd를 우회하므로 영향 없음.)
 
-#### 4) agent-app 실행
+#### 4) agent-app 배치 + 실행
 
-agent-app은 Codyssey가 제공하는 Python 앱으로, **별도 셸·별도 터미널**에서 실행한다. 메인 흐름 명령과 같은 줄에 이어 붙이면 `sudo -u ... -i`가 새 인터랙티브 셸을 띄워 이후 명령이 그 셸의 입력 큐에 쌓이는 함정에 빠진다.
+agent-app 은 Codyssey 가 제공하는 **PyInstaller 로 빌드된 단일 ELF 바이너리** (Python 인터프리터·코드·의존 패키지가 모두 묶여 있음). 명세는 `$AGENT_HOME/agent-app` 위치에서 agent-admin 권한으로 실행됨을 가정.
 
+**4-1) 바이너리 install** (Mac → VM, 호스트마다 SRC 경로 다름)
 ```bash
-# 새 터미널(또는 새 orb shell)에서 — agent-admin 으로 전환 후 실행
-sudo -u agent-admin -i
-python $AGENT_HOME/agent_app.py
-# 종료: Ctrl+C
+SRC=/Users/<your-mac-username>/Downloads/agent-app
+DST=/home/agent-admin/agent-app/agent-app
+sudo install -m 750 -o agent-admin -g agent-core "$SRC" "$DST"
+sudo ls -l "$DST"
 ```
+
+> [!NOTE]
+> OrbStack 환경에선 Mac 의 `/Users/<name>/` 가 VM 안에 자동 마운트되어 같은 경로로 보임 (virtiofs).
+> 클러스터·원격 SSH 환경에선 `scp` 또는 평가 운영 채널로 전송 필요.
+
+**4-2) 실행 (★ `-i bash -c` 패턴 — env 보존 핵심)**
+
+agent-app 은 시작 시 `AGENT_HOME` · `AGENT_KEY_PATH` 등 환경 변수를 검사한다. 다음 명령은 모두 **실패**:
+```bash
+sudo -u agent-admin "$DST"        # ❌ sudo 가 env reset → AGENT_HOME missing
+```
+
+올바른 패턴 — `-i` 가 login 셸로 `.bash_profile` 자동 source → AGENT_* 환경 변수 전달:
+```bash
+# (a) 포그라운드 확인 (Ctrl+C 로 종료)
+sudo -u agent-admin -i bash -c '"$AGENT_HOME/agent-app"'
+
+# (b) 백그라운드 실행 (운영용)
+sudo -u agent-admin -i bash -c 'nohup "$AGENT_HOME/agent-app" > /tmp/agent-app.out 2>&1 &'
+```
+
+**4-3) 실행 확인**
+```bash
+pgrep -fa agent-app                       # PID + 명령줄
+sudo ss -ltnp | grep ':15034 '            # LISTEN 확인
+sudo tail /tmp/agent-app.out              # 부팅 로그
+```
+
+기대 출력 — "All Boot Checks Passed! Agent READY" + "listening at port 15034".
 
 #### 5) cron 자동 실행 확인 (명세 요구)
 
@@ -274,6 +304,8 @@ bash bin/report.sh "2026-05-11 00:00" "2026-05-11 23:59"        # 시간 범위
 | `agent-app: Exec format error` | 아키텍처 미스매치 — VM 이 ARM64 인데 바이너리 x86_64. `orb create --arch amd64 ...` 로 amd64 VM 사용 |
 | `version 'GLIBC_2.38' not found` | OS 의 GLIBC 가 너무 옛 버전. `ldd --version` 으로 확인 → Ubuntu 24.04 등 더 새 OS 로 VM 재생성 |
 | `[sudo] password for ...` (다른 사용자 전환 시) | OrbStack NOPASSWD 는 일반 sudo 만 적용. `sudo -i` 로 root 셸 먼저 진입 후 그 안에서 `sudo -u other_user ...` |
+| agent-app 실행 시 `Critical Env 'AGENT_HOME' is missing` | `sudo -u agent-admin <bin>` 형태는 env 를 reset → AGENT_* 안 전달. `sudo -u agent-admin -i bash -c '...'` 패턴으로 login 셸 통해 `.bash_profile` source 필요 |
+| `Missing privilege separation directory: /run/sshd` (24.04 신규 환경) | openssh-server 막 설치되어 sshd 데몬 한 번도 안 뜸 → `setup/01-ssh.sh` 가 자동 `mkdir -p /run/sshd` 로 처리. 옛 코드면 `git pull` 로 갱신 |
 
 ## 설계 원칙
 
