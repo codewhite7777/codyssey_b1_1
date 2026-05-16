@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════════
-#  setup/verify.sh — 명세 35개 항목 자동 검증
+#  setup/verify.sh — 명세 40개 항목 자동 검증
 # ═══════════════════════════════════════════════════════════════════
 #
-#  무엇  : 명세의 모든 영역(SSH·방화벽·사용자·디렉토리·환경·monitor·cron)
-#          을 35개 check 로 자동 점검. 실패해도 끝까지 진행 후 종합 결과.
+#  무엇  : 명세의 모든 영역(SSH·방화벽·사용자·디렉토리·환경·monitor·cron·sudoers)
+#          을 40개 check 로 자동 점검. 실패해도 끝까지 진행 후 종합 결과.
 #  왜    : 평가자·학생이 한 줄로 명세 충족 여부 즉시 확인 가능.
 #          setup 직후 + 평가 시점 모두 활용.
 #  의존  : setup-all.sh 가 먼저 실행되어 있어야 의미 있음.
@@ -147,6 +147,20 @@ check "agent-admin crontab에 monitor.sh"         'sudo -u agent-admin crontab -
 check "logrotate 설정 파일 존재"                 "[ -f /etc/logrotate.d/agent-app ]"
 # logrotate -d : dry-run, "rotating pattern: ..." 출력이 정상 신호
 check "logrotate 문법 OK"                        'sudo logrotate -d /etc/logrotate.d/agent-app 2>&1 | grep -q "rotating pattern"'
+
+
+# ─── [8] sudoers (monitor.sh 의 ufw 점검 지원) ────────────────────
+# monitor.sh §"상태 점검" 이 'sudo -n ufw status' 를 호출 → NOPASSWD 룰 필요.
+# 룰이 없으면 ufw active 인데도 false WARNING ("not active") 이 출력됨.
+echo ""
+echo "===== [8] sudoers (monitor.sh 의 ufw 점검) ====="
+SUDOERS_FILE="/etc/sudoers.d/agent-admin-monitor"
+check "sudoers 파일 존재"                        "[ -f \"$SUDOERS_FILE\" ]"
+check "sudoers 파일 권한 0440"                   "[ \"\$(sudo stat -c %a \"$SUDOERS_FILE\" 2>/dev/null)\" = '440' ]"
+check "sudoers 파일 소유자 root"                 "[ \"\$(sudo stat -c %U \"$SUDOERS_FILE\" 2>/dev/null)\" = 'root' ]"
+check "sudoers 문법 OK (visudo -cf)"             "sudo visudo -cf \"$SUDOERS_FILE\""
+# ★ 실작동 검증 — agent-admin 이 sudo -n ufw status 가능해야 통과
+check "agent-admin → sudo -n ufw status 동작"    'sudo -u agent-admin sudo -n /usr/sbin/ufw status'
 
 
 # ─── 종합 결과 ────────────────────────────────────────────────────

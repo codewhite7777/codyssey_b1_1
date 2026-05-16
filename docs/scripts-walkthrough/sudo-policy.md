@@ -22,7 +22,7 @@ flowchart LR
 
 ---
 
-## 📊 사용 현황 (10개 스크립트)
+## 📊 사용 현황 (11개 스크립트)
 
 | 스크립트 | sudo 호출 | 카테고리 |
 |---|---|---|
@@ -32,6 +32,7 @@ flowchart LR
 | `setup/04-directories.sh` | 17 | 시스템 디렉토리·권한 |
 | `setup/05-environment.sh` | 13 | 시스템 파일·tee 패턴 |
 | `setup/06-cron.sh` | 9 | 시스템 파일·다른 사용자 |
+| `setup/07-sudoers.sh` | 7 | sudoers.d 작성·검증 (★ 신규) |
 | `setup/setup-all.sh` | 5 | install·sub 스크립트 |
 | `setup/verify.sh` | 13 | 보안 자원 read |
 | `bin/monitor.sh` | 5 | ufw 상태 read 등 |
@@ -247,6 +248,46 @@ sudo -n ufw status
 
 ---
 
+## 9️⃣ sudoers 룰 자체 작성 (★ NOPASSWD 최소 권한 부여)
+
+### 명령 예시
+```bash
+sudo tee /etc/sudoers.d/agent-admin-monitor >/dev/null <<EOF
+agent-admin ALL=(ALL) NOPASSWD: /usr/sbin/ufw status
+EOF
+sudo visudo -cf /etc/sudoers.d/agent-admin-monitor
+sudo chmod 0440 /etc/sudoers.d/agent-admin-monitor
+sudo chown root:root /etc/sudoers.d/agent-admin-monitor
+```
+
+### 왜 root 필수?
+
+`/etc/sudoers.d/*` 는 **sudo 시스템 자체의 정책 파일** — root 만 쓰기 가능 (sudoers 자체가 0440 root 소유).
+일반 사용자가 sudoers 를 임의 작성하면 권한 우회 위험 → POSIX 보안 정책상 **root 전용**.
+
+### 이 카테고리의 *최소 권한 원칙* 두 층위
+
+1. **이 작성 행위 자체는 root 필요** (sudoers.d 가 root 소유)
+2. **작성된 룰은 최소 권한 부여** —
+   - 사용자 범위: `agent-admin` 만
+   - 명령 범위: `/usr/sbin/ufw status` 만 (절대 경로 + 인자 고정)
+   - `enable`·`delete` 등 *변경 가능한* 서브명령 차단
+
+→ "root 권한으로 root 권한을 좁게 위임" 패턴. 운영 베스트 프랙티스.
+
+### 왜 이 룰이 필요했나 — 운영 사고 추적
+
+monitor.sh §"상태 점검" 이 `sudo -n ufw status` 로 ufw 활성 여부를 점검.
+agent-admin 이 sudoer 가 아니면 `sudo -n` 이 *침묵하며 실패* (NOPASSWD 룰 없음) →
+ufw active 인데 monitor.sh 가 "not active" false WARNING 출력.
+
+해결: 정확히 그 한 명령만 NOPASSWD 로 허용 → false WARNING 제거, monitor.sh 의 원래 의도 보존.
+
+### 관련 워크스루
+[07-sudoers.md](./07-sudoers.md), [monitor.md](./monitor.md)
+
+---
+
 ## 🎯 sudo 0회 — `bin/report.sh` (★ 최소 권한의 모범)
 
 `report.sh` 는 sudo **0회** 사용.
@@ -269,7 +310,7 @@ sudo -n ufw status
 > **명세 제약**: "필요한 경우에만 sudo 사용(가능한 일반 계정으로 진행)"
 >
 > **우리 구현**:
-> 본 레포의 모든 sudo 호출은 다음 8개 카테고리에 속한다:
+> 본 레포의 모든 sudo 호출은 다음 9개 카테고리에 속한다:
 > 1. 시스템 파일 수정 (`/etc/ssh/sshd_config` 등)
 > 2. 사용자·그룹 관리 (`/etc/passwd`·`/etc/group` 영향)
 > 3. 시스템 디렉토리 생성 (`/run`·`/var/log`)
@@ -278,6 +319,7 @@ sudo -n ufw status
 > 6. systemd 데몬 제어 (PID 1 도메인)
 > 7. 다른 사용자 권한 실행 (`sudo -u`, impersonation)
 > 8. 보안 자원 read (다른 사용자 파일·프로세스)
+> 9. sudoers 룰 작성 (★ NOPASSWD 를 *명령 1개 범위* 로 좁게 부여 — monitor.sh false WARNING 해결)
 >
 > 각 카테고리는 **root 권한이 본질적으로 필요한 Linux 시스템 정책**이다.
 > 일반 명령(echo·grep·awk·변수 선언)은 sudo 없이 호출했고,

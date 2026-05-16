@@ -3,9 +3,9 @@
 #  setup/setup-all.sh — 모든 setup 스크립트 + 배포 + 검증 통합 실행
 # ═══════════════════════════════════════════════════════════════════
 #
-#  무엇  : 6개 setup 스크립트(01~06)를 순차 실행한 후
+#  무엇  : 7개 setup 스크립트(01~07)를 순차 실행한 후
 #          monitor.sh·report.sh 를 $AGENT_HOME/bin 에 배포하고
-#          verify.sh 로 35개 항목 자동 검증.
+#          verify.sh 로 자동 검증.
 #  왜    : 평가자가 한 줄(setup-all.sh)로 전체 환경을 재현·검증할 수 있게.
 #  멱등  : 각 sub 스크립트가 모두 idempotent → 여러 번 실행 안전.
 #  사용  : sudo bash setup/setup-all.sh
@@ -38,10 +38,12 @@ echo "##############################################"
 echo ""
 
 
-# ─── 1) 6개 setup 스크립트 순차 실행 ──────────────────────────────
+# ─── 1) 7개 setup 스크립트 순차 실행 ──────────────────────────────
 # 하나라도 실패하면 set -e 가 즉시 중단 → 부분 적용 상태 회피
+# 07-sudoers : monitor.sh 의 ufw 점검을 위한 agent-admin NOPASSWD 룰
 for script in 01-ssh.sh 02-firewall.sh 03-users-groups.sh \
-              04-directories.sh 05-environment.sh 06-cron.sh; do
+              04-directories.sh 05-environment.sh 06-cron.sh \
+              07-sudoers.sh; do
     echo ""
     echo ">>> 실행: setup/$script"
     bash "$SCRIPT_DIR/$script"

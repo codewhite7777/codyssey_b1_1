@@ -12,6 +12,7 @@
 | [04-directories.md](./04-directories.md) | [setup/04-directories.sh](../../setup/04-directories.sh) | chmod 8진수, setgid 2 비트, EACCES 검증 |
 | [05-environment.md](./05-environment.md) | [setup/05-environment.sh](../../setup/05-environment.sh) | heredoc `<<'EOF'`, sed 범위 삭제, tee 패턴 |
 | [06-cron.md](./06-cron.md) | [setup/06-cron.sh](../../setup/06-cron.sh) | logrotate 옵션, mktemp+trap, cron 형식 |
+| [07-sudoers.md](./07-sudoers.md) | [setup/07-sudoers.sh](../../setup/07-sudoers.sh) | sudoers.d, NOPASSWD 최소 권한, visudo -cf, monitor.sh false WARNING 해결 |
 | [setup-all.md](./setup-all.md) | [setup/setup-all.sh](../../setup/setup-all.sh) | BASH_SOURCE, 절대 경로 확정, install 배포 |
 | [verify.md](./verify.md) | [setup/verify.sh](../../setup/verify.sh) | check 함수 + eval, SIGPIPE × pipefail 함정 |
 | [monitor.md](./monitor.md) | [bin/monitor.sh](../../bin/monitor.sh) | 9단계 흐름, cron 환경 회피, awk 자원 측정 |
