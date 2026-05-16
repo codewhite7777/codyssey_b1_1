@@ -17,6 +17,12 @@
 | [monitor.md](./monitor.md) | [bin/monitor.sh](../../bin/monitor.sh) | 9단계 흐름, cron 환경 회피, awk 자원 측정 |
 | [report.md](./report.md) | [bin/report.sh](../../bin/report.sh) | awk BEGIN/본문/END, 동적 정규식, 통계 |
 
+## 횡단(cross-cutting) 정책
+
+| 문서 | 내용 |
+|---|---|
+| [**sudo-policy.md**](./sudo-policy.md) | 모든 스크립트의 sudo 사용을 8개 카테고리로 분류 — 명세 "필요한 경우에만 sudo" 충족 증거 + 자기평가 답변 재료 |
+
 ## 공통 구조
 
 각 워크쓰루는 다음 구조를 따른다:
