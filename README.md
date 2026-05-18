@@ -2,7 +2,7 @@
 
 > Codyssey B1-1 과제 산출물 레포. 학습 노트는 별도 레포 [codyssey_notes](https://github.com/codewhite7777/codyssey_notes/tree/main/codyssey_b1_1_study)에 분리 보관.
 
-**상태**: 🟢 코드 작성 완료 (setup 8개 + bin 2개 스크립트) — 평가 환경에서 실행·검증 대기
+**상태**: 🟢 명세 + 보너스 1·2 완전 충족 (setup 8개 + bin 3개) — `verify.sh` **47/47** 자동 검증 통과, 3개 운영 함정 발견·해결 문서화 완료
 
 ## 과제 개요
 
@@ -15,7 +15,7 @@
 > agent-app(서비스) 을 안전한 환경에 배치하고, monitor.sh(CCTV) 가 매분 자동 감시하며,
 > logrotate(보존 정책) 가 기록을 관리하는 **완성된 관제 시스템 1세트를 구축**한다.
 
-### 명세 6개 영역 한눈에
+### 명세 6개 영역 + 보너스 1·2 한눈에
 
 | # | 영역 | 핵심 | 구현 |
 |---|---|---|---|
@@ -23,8 +23,11 @@
 | 2 | 방화벽 | ufw 20022·15034 만 허용 | `setup/02-firewall.sh` |
 | 3 | 사용자·그룹 | admin/dev/test + common/core 역할 분리 | `setup/03-users-groups.sh` |
 | 4 | 디렉토리·권한 | AGENT_HOME 구조 + setgid | `setup/04-directories.sh` |
-| 5 | 환경 변수 | `.bash_profile` AGENT_* + 키 파일 | `setup/05-environment.sh` |
-| 6 | cron·logrotate | 매분 monitor.sh + 10MB/10 파일 | `setup/06-cron.sh` |
+| 5 | 환경 변수 | `.bash_profile` AGENT_* + 키 파일 (0640 보안) | `setup/05-environment.sh` |
+| 6 | cron·logrotate | 매분 monitor.sh + 크기 기반 10MB/10 회전 | `setup/06-cron.sh` |
+| ★ | **sudoers** (트러블슈팅) | monitor.sh 의 ufw 점검용 최소권한 룰 | `setup/07-sudoers.sh` |
+| 🎁 | **보너스 1** | monitor.log 통계 (gawk 의존성 보장) | `bin/report.sh` + `setup-all.sh` 0단계 |
+| 🎁 | **보너스 2** | 시간 기반 보존 (7일+ gzip → archive, 30일+ 삭제) | `bin/log-rotate.sh` + `/etc/cron.d/agent-log-rotate` |
 
 ### 명세 풀이 가이드
 
@@ -107,17 +110,19 @@ codyssey_b1_1/
 │   ├── spec.md              # Codyssey 원본 명세
 │   └── 수행내역서.md         # 구현 과정 기록
 ├── bin/
-│   ├── monitor.sh           # 핵심 산출물 — health check + 자원 측정
-│   └── report.sh            # 보너스 — 로그 통계 리포트
+│   ├── monitor.sh           # 핵심 — health check + 자원 측정 (매분 cron)
+│   ├── report.sh            # 보너스 1 — 로그 통계 리포트 (gawk)
+│   └── log-rotate.sh        # 보너스 2 — 시간 기반 보존 (7/30일, 매일 03:00 cron)
 ├── setup/
 │   ├── 01-ssh.sh            # SSH 포트 20022 + root 차단
 │   ├── 02-firewall.sh       # ufw — 20022·15034 허용
 │   ├── 03-users-groups.sh   # agent-admin/dev/test + agent-core/common
 │   ├── 04-directories.sh    # AGENT_HOME·로그 디렉토리·ACL
-│   ├── 05-environment.sh    # .bash_profile + AGENT_* 환경 변수
-│   ├── 06-cron.sh           # cron 매분 등록 + logrotate 정책
-│   ├── setup-all.sh         # 6단계 통합 실행 + monitor.sh 배포
-│   └── verify.sh            # 명세 검증 자동화 (35개 항목)
+│   ├── 05-environment.sh    # .bash_profile + AGENT_* (0640 보안)
+│   ├── 06-cron.sh           # 매분 monitor.sh + logrotate + 매일 log-rotate.sh
+│   ├── 07-sudoers.sh        # ★ monitor.sh 의 sudo -n ufw status 최소권한 룰
+│   ├── setup-all.sh         # 0) gawk + 7 setup + 3 bin 배포 + verify 자동
+│   └── verify.sh            # 명세 검증 자동화 (47개 항목, self-elevation)
 ├── evidence/                # 실행 증거 (스크린샷·명령 출력)
 └── .gitignore
 ```
@@ -316,17 +321,44 @@ sudo bash setup/02-firewall.sh      # ufw default deny + 20022/15034 허용
 sudo bash setup/03-users-groups.sh  # 사용자·그룹 생성
 sudo bash setup/04-directories.sh   # 디렉토리·ACL
 sudo bash setup/05-environment.sh   # .bash_profile + AGENT_* 환경 변수
-sudo bash setup/06-cron.sh          # cron + logrotate
+sudo bash setup/06-cron.sh          # cron + logrotate + log-rotate.sh 매일
+sudo bash setup/07-sudoers.sh       # ★ NOPASSWD: /usr/sbin/ufw status
 ```
 
-### 보너스 — 로그 통계 리포트
+### 보너스 1 — 로그 통계 리포트 (report.sh)
 
-monitor.log를 시간 범위로 집계해서 평균·최대 사용률을 보여준다.
+monitor.log를 시간 범위로 집계해서 평균·최대 사용률을 보여준다. 의존성: **gawk** (Ubuntu default = mawk 라 setup-all.sh 의 0단계가 자동 설치 보장).
 
 ```bash
-bash bin/report.sh                                              # 전체 로그
-bash bin/report.sh "2026-05-11 00:00" "2026-05-11 23:59"        # 시간 범위
+$AGENT_HOME/bin/report.sh                                       # 전체 로그
+$AGENT_HOME/bin/report.sh "2026-05-11 00:00" "2026-05-11 23:59" # 시간 범위
 ```
+
+### 보너스 2 — 시간 기반 로그 보존 (log-rotate.sh) ★
+
+명세 §5 보너스 2 충실 구현. 매일 03:00 cron 으로 자동 실행:
+- **7일+ 경과** `/var/log/agent-app/*.log` → gzip → `/var/log/monitor/agent-app/archive/`
+- **30일+ 경과** archive 의 `.gz` → 삭제
+- **예외 처리**: 디렉토리 미존재·권한 부족·대상 파일 0개 모두 안전 종료/경고
+
+```bash
+sudo $AGENT_HOME/bin/log-rotate.sh --dry-run     # 실제 실행 없이 로직·예외 검증
+sudo $AGENT_HOME/bin/log-rotate.sh                # 실제 housekeeping
+```
+
+크기 기반 logrotate (§4.4, 10MB 즉시 회전) 와 시간 기반 log-rotate.sh (§5 보너스 2, 7/30일) 는 **직교 공존** — 즉시 trim + 장기 housekeeping.
+
+### 트러블슈팅 — 운영 사고 3종 (자기평가 핵심 자료)
+
+평가 환경에서 발견·해결한 세 함정 — 모두 *"코드 작성자 환경 가정 ↔ 실제 배포 환경 어긋남"* 같은 패턴:
+
+| # | 함정 | 진단 | 해결 |
+|---|---|---|---|
+| 1 | monitor.sh 의 ufw 점검이 ufw active 인데도 false WARNING | `sudo -n ufw status` 가 NOPASSWD 룰 부재로 silent fail | `setup/07-sudoers.sh` 신규 (최소권한 룰) |
+| 2 | `report.sh` 가 `awk: syntax error at or near ,` 로 죽음 | `match()` 3번째 인자 = gawk 확장. Ubuntu default = mawk | `report.sh` 의 `awk` → `gawk` 명시 + `setup-all.sh` 의 0단계 gawk 보장 |
+| 3 | `bash setup/verify.sh` 직접 호출 시 10개 false FAIL | 일부 check 가 `/home/agent-admin/` 접근 — aranglee 가 agent-core 아니라 EACCES | `verify.sh` 에 `exec sudo "$0" "$@"` self-elevation |
+
+상세: [docs/수행내역서.md](./docs/%EC%88%98%ED%96%89%EB%82%B4%EC%97%AD%EC%84%9C.md) §7, §보너스1, §종합검증.
 
 ### 트러블슈팅
 
