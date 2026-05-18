@@ -81,8 +81,13 @@ export AGENT_LOG_DIR="/var/log/agent-app"
 # --- end agent-app env ---
 EOF
 
+# 권한 0640 — owner read/write + group read + others 차단
+# 이유: AGENT_KEY_PATH (.../api_keys/t_secret.key) 경로가 이 파일에 노출.
+#       0644 (others read) 면 agent-test 등 다른 사용자가 키 위치를 알 수 있음
+#       → 정보 누출 (CWE-200). 키 자체는 0440 agent-core 라 탈취 불가지만,
+#       경로 노출만으로도 *공격 표면 확대*. 0640 으로 others 차단.
 sudo chown agent-admin:agent-admin "$BASH_PROFILE"
-sudo chmod 644 "$BASH_PROFILE"
+sudo chmod 0640 "$BASH_PROFILE"
 
 
 echo "[OK] 환경 변수 등록 완료"

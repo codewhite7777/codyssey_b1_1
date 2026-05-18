@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════════
-#  setup/verify.sh — 명세 40개 항목 자동 검증
+#  setup/verify.sh — 명세 47개 항목 자동 검증
 # ═══════════════════════════════════════════════════════════════════
 #
-#  무엇  : 명세의 모든 영역(SSH·방화벽·사용자·디렉토리·환경·monitor·cron·sudoers)
-#          을 40개 check 로 자동 점검. 실패해도 끝까지 진행 후 종합 결과.
+#  무엇  : 명세의 모든 영역(SSH·방화벽·사용자·디렉토리·환경·monitor·cron·sudoers·
+#          .bash_profile 보안·보너스2 시간기반 로그 보존) 을 47개 check 로
+#          자동 점검. 실패해도 끝까지 진행 후 종합 결과.
 #  사용  : bash setup/verify.sh   (root 권한 자동 escalate — sudo 자동 호출)
 #          또는 sudo bash setup/verify.sh (이미 root 면 즉시 진행)
 #  왜    : 평가자·학생이 한 줄로 명세 충족 여부 즉시 확인 가능.
@@ -175,6 +176,30 @@ check "sudoers 파일 소유자 root"                 "[ \"\$(sudo stat -c %U \"
 check "sudoers 문법 OK (visudo -cf)"             "sudo visudo -cf \"$SUDOERS_FILE\""
 # ★ 실작동 검증 — agent-admin 이 sudo -n ufw status 가능해야 통과
 check "agent-admin → sudo -n ufw status 동작"    'sudo -u agent-admin sudo -n /usr/sbin/ufw status'
+
+
+# ─── [9] 보너스 2 — 시간 기반 로그 보존 (log-rotate.sh) ────────────
+# 명세 §5 보너스 2: 7일+ 압축 → archive/ 이동, 30일+ archive 삭제, 예외 처리.
+echo ""
+echo "===== [9] 보너스 2 — 시간 기반 로그 보존 ====="
+LOG_ROTATE="$AGENT_HOME/bin/log-rotate.sh"
+CRON_D="/etc/cron.d/agent-log-rotate"
+check "log-rotate.sh 존재"                       "[ -f \"$LOG_ROTATE\" ]"
+check "log-rotate.sh 실행 가능"                  "[ -x \"$LOG_ROTATE\" ]"
+check "log-rotate.sh 권한 750"                   "[ \"\$(stat -c %a \"$LOG_ROTATE\" 2>/dev/null)\" = '750' ]"
+check "/etc/cron.d/agent-log-rotate 존재"        "[ -f \"$CRON_D\" ]"
+check "cron.d 에 log-rotate.sh 호출 등록"        "sudo grep -q 'log-rotate.sh' \"$CRON_D\""
+# dry-run 검증 — 실제 변경 없이 스크립트가 syntax·로직 통과하는지
+check "log-rotate.sh --dry-run 정상"             "sudo \"$LOG_ROTATE\" --dry-run"
+
+
+# ─── 5.5) C1 — .bash_profile 권한 0640 (정보 누출 방지) ────────────
+# AGENT_KEY_PATH 가 노출되는 .bash_profile 은 0640 이어야 others 차단.
+# [5] 환경 변수 영역에 추가하지 않고 별도 — sudoers 와 같은 보안 가드.
+echo ""
+echo "===== [5b] .bash_profile 보안 권한 ====="
+BASH_PROFILE="/home/agent-admin/.bash_profile"
+check ".bash_profile 권한 0640"                  "[ \"\$(sudo stat -c %a \"$BASH_PROFILE\" 2>/dev/null)\" = '640' ]"
 
 
 # ─── 종합 결과 ────────────────────────────────────────────────────

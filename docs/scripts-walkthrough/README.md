@@ -16,7 +16,8 @@
 | [setup-all.md](./setup-all.md) | [setup/setup-all.sh](../../setup/setup-all.sh) | BASH_SOURCE, 절대 경로 확정, install 배포 |
 | [verify.md](./verify.md) | [setup/verify.sh](../../setup/verify.sh) | check 함수 + eval, SIGPIPE × pipefail 함정 |
 | [monitor.md](./monitor.md) | [bin/monitor.sh](../../bin/monitor.sh) | 9단계 흐름, cron 환경 회피, awk 자원 측정 |
-| [report.md](./report.md) | [bin/report.sh](../../bin/report.sh) | awk BEGIN/본문/END, 동적 정규식, 통계 |
+| [report.md](./report.md) | [bin/report.sh](../../bin/report.sh) | gawk BEGIN/본문/END, 동적 정규식, 통계, mawk 함정 |
+| [log-rotate.md](./log-rotate.md) | [bin/log-rotate.sh](../../bin/log-rotate.sh) | ★ 보너스 2 — 시간 기반 7/30일 보존, find -mtime, NUL 안전, 예외 처리 |
 
 ## 횡단(cross-cutting) 정책
 

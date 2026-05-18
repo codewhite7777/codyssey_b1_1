@@ -4,9 +4,11 @@
 # ═══════════════════════════════════════════════════════════════════
 #
 #  무엇  : agent-admin 의 crontab 에 monitor.sh 매분 실행 등록 +
-#          logrotate 정책(10MB / 10파일) 설치.
+#          logrotate 정책(10MB / 10파일) 설치 +
+#          log-rotate.sh (시간 기반 7/30일) 일일 cron 등록 — 보너스 2.
 #  왜    : 자동 관제 — 사람이 매분 직접 측정할 수 없으니 cron 이 호출.
-#          로그가 무한 커지는 것을 logrotate 가 자동 회전·압축.
+#          로그가 무한 커지는 것을 logrotate 가 자동 회전·압축 (크기 기반).
+#          명세 §5 보너스 2 "시간 기반 보존" 은 log-rotate.sh + 매일 cron.
 #  멱등  : crontab 기존 monitor.sh 라인 + 환경 라인 제거 후 재추가.
 #          logrotate 설정 파일은 tee 로 덮어쓰기.
 #  의존  : monitor.sh 가 $AGENT_HOME/bin/ 에 배포되어 있어야 cron 이 실행
@@ -114,3 +116,24 @@ echo "[OK] cron 등록 완료"
 echo ""
 echo "[검증] agent-admin 의 crontab"
 sudo -u agent-admin crontab -l
+
+
+# ─── 4) log-rotate.sh 일일 cron 등록 (★ 보너스 2 — 시간 기반 보존) ────
+# /etc/cron.d/* 형식: 시간 필드 + 사용자 + 명령
+#   - root 권한 필요 (archive 디렉토리 chown·mkdir, .log 파일 삭제)
+#   - 매일 03:00 (저부하 시간대)
+#   - log-rotate.sh 가 직접 stderr 분리 + 종합 결과 출력 → cron.log 에 누적
+echo ""
+sudo tee /etc/cron.d/agent-log-rotate >/dev/null <<'EOF'
+# codyssey_b1_1 — 시간 기반 로그 보존 정책 (명세 §5 보너스 2)
+# 7일+ 경과 .log → gzip → /var/log/monitor/agent-app/archive/
+# 30일+ 경과 archive/*.gz → 삭제
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+MAILTO=""
+0 3 * * * root /home/agent-admin/agent-app/bin/log-rotate.sh >> /var/log/agent-app/log-rotate.log 2>&1
+EOF
+# /etc/cron.d/* 는 권한 0644, owner root 가 표준 (cron 데몬이 그 외엔 무시)
+sudo chown root:root /etc/cron.d/agent-log-rotate
+sudo chmod 0644 /etc/cron.d/agent-log-rotate
+echo "[OK] log-rotate cron 등록: /etc/cron.d/agent-log-rotate (매일 03:00)"

@@ -71,8 +71,11 @@ sudo install -m 750 -o agent-dev -g agent-core \
     "$REPO_ROOT/bin/monitor.sh" "$AGENT_BIN/monitor.sh"
 sudo install -m 750 -o agent-dev -g agent-core \
     "$REPO_ROOT/bin/report.sh"  "$AGENT_BIN/report.sh"
+# log-rotate.sh — 보너스 2 시간 기반 보존 정책 (root 가 /etc/cron.d 로 호출)
+sudo install -m 750 -o agent-dev -g agent-core \
+    "$REPO_ROOT/bin/log-rotate.sh" "$AGENT_BIN/log-rotate.sh"
 
-echo "[OK] $AGENT_BIN/monitor.sh, report.sh 배포 완료"
+echo "[OK] $AGENT_BIN/monitor.sh, report.sh, log-rotate.sh 배포 완료"
 ls -l "$AGENT_BIN/"
 
 
