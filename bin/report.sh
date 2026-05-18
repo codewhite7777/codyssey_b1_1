@@ -12,7 +12,9 @@
 #    report.sh "2026-05-11 00:00" "..."          # 시작 시각만
 #    report.sh "..." "2026-05-11 23:59"          # 종료 시각만
 #    report.sh "2026-05-11 00:00" "2026-05-11 23:59"   # 범위
-#  의존  : awk (gawk 권장 — match 의 3번째 인자 사용).
+#  의존  : ★ gawk 필수 — match() 의 3번째 인자 (캡처 배열) 는 gawk 확장.
+#          mawk (Ubuntu default) 는 지원 X → syntax error 발생.
+#          setup/setup-all.sh 가 gawk 설치를 보장.
 #
 #  학습 노트: cron-fundamentals, log-rotation
 #  ★ 줄별·문법 풀이: docs/scripts-walkthrough/report.md
@@ -58,7 +60,8 @@ END="${2:-}"
 # ─── 3) 범위 필터링 (있으면) ──────────────────────────────────────
 # awk 로 라인의 타임스탬프를 추출해 START·END 사이만 통과
 if [ -n "$START" ] || [ -n "$END" ]; then
-    FILTERED=$(awk -v s="$START" -v e="$END" '
+    # gawk 명시 — Ubuntu default awk 가 mawk 라 match() 3번째 인자 미지원
+    FILTERED=$(gawk -v s="$START" -v e="$END" '
         {
             # 로그 형식: [YYYY-MM-DD HH:MM:SS] ...
             # match 3번째 인자 (gawk 확장) : 캡처를 m 배열에 저장
@@ -89,7 +92,8 @@ SAMPLES=$(echo "$FILTERED" | wc -l)
 compute_stats() {
     local metric="$1"   # 매칭할 메트릭 이름 (CPU/MEM/DISK_USED)
     local label="$2"    # 출력 시 표시할 한글·짧은 이름
-    echo "$FILTERED" | awk -v m="$metric" -v label="$label" '
+    # gawk 명시 — match() 3번째 인자 (캡처 배열) 사용
+    echo "$FILTERED" | gawk -v m="$metric" -v label="$label" '
         BEGIN {
             min_v = 999999    # 비교용 초기값 (모든 실제 값보다 큼)
             max_v = -1        # 모든 실제 값보다 작음

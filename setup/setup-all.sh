@@ -38,6 +38,16 @@ echo "##############################################"
 echo ""
 
 
+# ─── 0) gawk 보장 (bin/report.sh 의 match() 3번째 인자 의존성) ────
+# Ubuntu default awk 는 mawk — match() 3번째 인자 미지원.
+# report.sh 가 gawk 명시 호출하므로 gawk 패키지 필수.
+if ! command -v gawk >/dev/null 2>&1; then
+    echo ">>> gawk 설치 (report.sh 의존성)"
+    sudo apt-get update -qq
+    sudo apt-get install -y gawk
+fi
+
+
 # ─── 1) 7개 setup 스크립트 순차 실행 ──────────────────────────────
 # 하나라도 실패하면 set -e 가 즉시 중단 → 부분 적용 상태 회피
 # 07-sudoers : monitor.sh 의 ufw 점검을 위한 agent-admin NOPASSWD 룰
