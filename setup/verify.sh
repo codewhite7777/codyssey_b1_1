@@ -5,6 +5,8 @@
 #
 #  무엇  : 명세의 모든 영역(SSH·방화벽·사용자·디렉토리·환경·monitor·cron·sudoers)
 #          을 40개 check 로 자동 점검. 실패해도 끝까지 진행 후 종합 결과.
+#  사용  : bash setup/verify.sh   (root 권한 자동 escalate — sudo 자동 호출)
+#          또는 sudo bash setup/verify.sh (이미 root 면 즉시 진행)
 #  왜    : 평가자·학생이 한 줄로 명세 충족 여부 즉시 확인 가능.
 #          setup 직후 + 평가 시점 모두 활용.
 #  의존  : setup-all.sh 가 먼저 실행되어 있어야 의미 있음.
@@ -41,6 +43,18 @@
 # ═══════════════════════════════════════════════════════════════════
 
 set -u   # pipefail · errexit 의도적 비활성
+
+
+# ─── self-elevation (★ 일관된 root 권한 보장) ─────────────────────
+# 일부 check ([ -d ], [ -f ], stat) 가 /home/agent-admin/ 안의 자원에
+# 접근. 디렉토리 권한 0750 (owner=agent-admin, group=agent-core) 이라
+# 일반 사용자는 권한 부족 → false FAIL.
+# → root 가 아니면 자동으로 sudo 로 자기 자신 재실행 (exec = 현재 프로세스 교체).
+# 학습 노트: shell-sudo-and-sudoers, bash-set-safe
+if [ "$EUID" -ne 0 ]; then
+    exec sudo "$0" "$@"
+fi
+
 
 PASS=0
 FAIL=0
