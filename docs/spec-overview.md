@@ -418,7 +418,7 @@ agent-admin 의 crontab 에 monitor.sh 매분 실행 등록:
 | "monitor.sh 의 health check 와 자원 측정 흐름" | 영역 6-2 + [process-and-signals](https://github.com/codewhite7777/codyssey_notes/blob/main/codyssey_b1_1_study/process-and-signals.md) |
 | "logrotate 정책의 의도" | 영역 6-3 + [log-rotation](https://github.com/codewhite7777/codyssey_notes/blob/main/codyssey_b1_1_study/log-rotation.md) |
 | "set -euo pipefail 을 사용한 이유" | [bash-set-safe](https://github.com/codewhite7777/codyssey_notes/blob/main/codyssey_b1_1_study/bash-set-safe.md) + 회고 함정 3 |
-| "트러블슈팅: 무엇이 어디서 막혔고 어떻게 해결했나" | [회고 노트 5개 함정](https://github.com/codewhite7777/codyssey_notes/blob/main/retrospectives/2026-05-12-b1-1-troubleshooting.md) |
+| "트러블슈팅: 무엇이 어디서 막혔고 어떻게 해결했나" | [회고 5/12 — 5개 함정](https://github.com/codewhite7777/codyssey_notes/blob/main/retrospectives/2026-05-12-b1-1-troubleshooting.md) + [회고 5/18 — 세 함정 대칭 + 보너스 2](https://github.com/codewhite7777/codyssey_notes/blob/main/retrospectives/2026-05-18-b1-1-three-symmetric-traps-and-bonus2.md) |
 
 ---
 
@@ -434,4 +434,5 @@ agent-admin 의 crontab 에 monitor.sh 매분 실행 등록:
 - [docs/spec.md](./spec.md) — Codyssey 원본 명세
 - [README.md](../README.md) — 평가 환경 셋업 + 트러블슈팅
 - [학습 노트 21개](https://github.com/codewhite7777/codyssey_notes/tree/main/codyssey_b1_1_study)
-- [트러블슈팅 회고](https://github.com/codewhite7777/codyssey_notes/blob/main/retrospectives/2026-05-12-b1-1-troubleshooting.md)
+- [트러블슈팅 회고 5/12 — 5 함정](https://github.com/codewhite7777/codyssey_notes/blob/main/retrospectives/2026-05-12-b1-1-troubleshooting.md)
+- [트러블슈팅 회고 5/18 — 세 함정 대칭 + 보너스 2](https://github.com/codewhite7777/codyssey_notes/blob/main/retrospectives/2026-05-18-b1-1-three-symmetric-traps-and-bonus2.md)

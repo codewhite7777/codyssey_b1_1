@@ -23,7 +23,7 @@
 | 2 | 방화벽 | ufw 20022·15034 만 허용 | `setup/02-firewall.sh` |
 | 3 | 사용자·그룹 | admin/dev/test + common/core 역할 분리 | `setup/03-users-groups.sh` |
 | 4 | 디렉토리·권한 | AGENT_HOME 구조 + setgid | `setup/04-directories.sh` |
-| 5 | 환경 변수 | `.bash_profile` AGENT_* + 키 파일 (0640 보안) | `setup/05-environment.sh` |
+| 5 | 환경 변수 | `.bash_profile` (0640) + AGENT_* + 키 파일 `t_secret.key` (0440) | `setup/05-environment.sh` |
 | 6 | cron·logrotate | 매분 monitor.sh + 크기 기반 10MB/10 회전 | `setup/06-cron.sh` |
 | ★ | **sudoers** (트러블슈팅) | monitor.sh 의 ufw 점검용 최소권한 룰 | `setup/07-sudoers.sh` |
 | 🎁 | **보너스 1** | monitor.log 통계 (gawk 의존성 보장) | `bin/report.sh` + `setup-all.sh` 0단계 |
@@ -151,7 +151,7 @@ flowchart LR
     B --> C["3.git clone"]
     C --> D["4.setup-all.sh<br/>★ 메인 작업"]
     D --> E["5.cron 1~2분<br/>대기·확인"]
-    E --> F["6.verify.sh<br/>35개 자동 검증"]
+    E --> F["6.verify.sh<br/>47개 자동 검증"]
 
     style A fill:#cce5ff
     style D fill:#ffe6cc
@@ -258,7 +258,7 @@ cd codyssey_b1_1
 sudo bash setup/setup-all.sh
 ```
 
-setup-all.sh는 6단계를 순차 실행하고 마지막에 verify.sh로 자체 검증한다. 모두 멱등하므로 여러 번 실행해도 안전.
+setup-all.sh 가 한 줄로 처리하는 4가지: ① 0단계 **gawk** 보장 (report.sh 의존성 — Ubuntu mawk 함정 방어) → ② **7개 setup** (01-ssh ~ 07-sudoers) 순차 → ③ **3개 bin 배포** (monitor·report·log-rotate 를 `$AGENT_HOME/bin/` 으로 install) → ④ **verify.sh** 47/47 자동 검증. 모두 멱등하므로 여러 번 실행해도 안전.
 
 > [!WARNING]
 > 이 단계에서 sshd 포트가 22 → 20022로 변경된다. SSH 원격 접속 환경이라면 **현재 세션은 유지되지만 새 접속은 `ssh -p 20022`로** 들어가야 한다. 안전을 위해 다른 터미널에서 미리 세션을 하나 더 열어두기를 권장. (OrbStack은 `orb shell`이 sshd를 우회하므로 영향 없음.)
@@ -321,11 +321,11 @@ sudo tail -20 /var/log/agent-app/monitor.log
 sudo bash setup/verify.sh
 ```
 
-35개 항목을 자동으로 점검한다. 모두 `[OK]`면 명세 충족.
+47개 항목을 자동으로 점검한다 (8 영역: SSH·방화벽·계정·디렉토리·환경·monitor·cron·sudoers + .bash_profile 보안 + 보너스 2). 모두 `[OK]`면 명세 + 보너스 충족. self-elevation 내장이라 sudo 없이 호출해도 자동 권한 상향.
 
 ### 개별 단계 실행 (디버깅 시)
 
-setup-all.sh가 6단계를 순차 실행하지만, 한 단계만 다시 돌리고 싶을 때는 개별 실행 가능 (모두 멱등).
+setup-all.sh 가 0)gawk + 7 setup + 3 bin 배포 + verify 까지 통합 수행하지만, 한 단계만 다시 돌리고 싶을 때는 개별 실행 가능 (모두 멱등).
 
 ```bash
 sudo bash setup/01-ssh.sh           # SSH 포트 20022 + root 차단

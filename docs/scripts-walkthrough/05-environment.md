@@ -335,6 +335,7 @@ AGENT_UPLOAD_DIR=/home/agent-admin/agent-app/upload_files
 | cron 에서 AGENT_ 안 보임 | cron 은 `.bash_profile` 안 읽음 — monitor.sh 가 default 처리로 회피 |
 | 키 파일 권한 600 | 444 / 440 → 그룹 read 까지 허용 (멤버 사용 가능) |
 | AGENT_HOME 이 setup 시점에 expand 됨 | `<<EOF` (따옴표 없음) 사용한 함정 — `<<'EOF'` 로 |
+| ★ `.bash_profile` 권한 **0644** → 정보 누출 (CWE-200) | AGENT_KEY_PATH 경로가 노출됨. agent-test 등 others 가 키 경로 알 수 있음. **0640** (group=agent-admin 만 read) 으로 차단. 키 자체는 0440 agent-core 라 탈취는 불가능하지만 공격 표면 확대 회피 |
 
 ---
 

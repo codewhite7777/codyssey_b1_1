@@ -56,7 +56,7 @@ EOF
 | `missingok` | 원본 파일 없어도 에러 X (start 직후 정상) |
 | `notifempty` | 빈 파일은 회전 안 함 |
 | `copytruncate` | 원본 복사 후 truncate (앱 재시작 없이 가능) |
-| `create 0640 user group` | 새 로그 파일을 이 권한·소유자로 생성 |
+| `create 0640 user group` | 회전 후 새 로그 파일을 **0640 (owner rw + group r + others 차단)** + user:group 소유자로 생성. 0644 면 others 가 monitor.log read 가능해 정보 누출 — 0640 으로 agent-core 그룹원만 read. `.bash_profile` 의 0640 결정과 같은 원칙 (Defense in Depth) |
 
 ### `su agent-dev agent-core` 가 핵심 (회고 노트 함정 2)
 
