@@ -1,6 +1,6 @@
 # `setup/setup-all.sh` — 줄별·문법 풀이
 
-> **한 줄로** · 6개 setup 스크립트(01~06) 순차 실행 + monitor.sh·report.sh 배포 + verify.sh 검증 통합 실행. 평가자가 한 줄로 전체 환경 재현.
+> **한 줄로** · gawk 보장(0단계) + 7개 setup 스크립트(01~07) 순차 실행 + monitor.sh·report.sh 배포 + verify.sh 자동 검증. 평가자가 한 줄로 전체 환경 재현.
 >
 > **코드**: [setup/setup-all.sh](../../setup/setup-all.sh)
 
@@ -8,10 +8,12 @@
 
 ```mermaid
 flowchart LR
-    A(["01~06 순차 실행"]) --> B(["monitor.sh·report.sh 배포"])
-    B --> C(["verify.sh 35개 검증"])
+    Z(["0) gawk 보장 (report.sh 의존성)"]) --> A(["01~07 순차 실행"])
+    A --> B(["monitor.sh·report.sh 배포"])
+    B --> C(["verify.sh 40개 검증"])
     C --> D(["다음 단계 안내"])
 
+    style Z fill:#fff3b0,stroke:#c0a35a,stroke-width:2px
     style A fill:#dbe9ff,stroke:#5a8fc0,stroke-width:2px
     style B fill:#ffe6cc,stroke:#c08f5a,stroke-width:2px
     style C fill:#ccffcc,stroke:#5ac08f,stroke-width:2px
@@ -66,16 +68,56 @@ setup 폴더의 부모 = 레포 루트. 같은 패턴.
 
 ---
 
-## 6개 setup 순차 실행
+## 0단계 — gawk 보장 (★ report.sh 의존성)
+
+```bash
+if ! command -v gawk >/dev/null 2>&1; then
+    echo ">>> gawk 설치 (report.sh 의존성)"
+    sudo apt-get update -qq
+    sudo apt-get install -y gawk
+fi
+```
+
+### 왜 0단계가 필요한가
+
+`bin/report.sh` 가 `match($0, /RE/, ARR)` 의 **3번째 인자 (캡처 배열)** 를 사용 — 이는 **gawk 확장**. Ubuntu 24.04 default awk = **mawk** → 미지원 → `syntax error at or near ,`. setup-all 이 환경 보장.
+
+| 부분 | 의미 |
+|---|---|
+| `command -v gawk` | gawk 가 PATH 에 있는지 — 있으면 exit 0, 없으면 1 |
+| `! ...` | 부정 — gawk 가 **없으면** then 블록 |
+| `apt-get update -qq` | 패키지 목록 갱신 (`-qq` = 거의 silent) |
+| `apt-get install -y` | confirm 자동 yes |
+
+**멱등** — gawk 이미 있으면 skip, 없으면 설치. 여러 번 실행 안전.
+
+### 함정 추적 (자기평가 답변 재료)
+
+이 0단계가 없을 때:
+```
+$ $AGENT_HOME/bin/report.sh
+awk: line 5: syntax error at or near ,
+awk: line 8: syntax error at or near ,
+awk: line 14: syntax error at or near }
+```
+
+`monitor.sh` 의 sudoers NOPASSWD 룰 부재와 *완전히 같은 패턴* — 코드 작성자의 환경 가정 ↔ 실제 배포 환경 어긋남. 발견 → 진단 → setup 보강으로 재현성 회복.
+
+---
+
+## 7개 setup 순차 실행
 
 ```bash
 for script in 01-ssh.sh 02-firewall.sh 03-users-groups.sh \
-              04-directories.sh 05-environment.sh 06-cron.sh; do
+              04-directories.sh 05-environment.sh 06-cron.sh \
+              07-sudoers.sh; do
     echo ""
     echo ">>> 실행: setup/$script"
     bash "$SCRIPT_DIR/$script"
 done
 ```
+
+> ※ `07-sudoers.sh` 는 monitor.sh 의 `sudo -n ufw status` 호출이 NOPASSWD 룰 부재로 false WARNING 을 출력하던 사고를 해결하기 위해 추가. 상세: [07-sudoers.md](./07-sudoers.md), [sudo-policy.md](./sudo-policy.md) §9.
 
 ### `for x in A B C \` 다중 라인
 
@@ -174,9 +216,10 @@ echo "  3. 1-2분 대기 후 monitor.log 누적 확인:"
 | 단계 | 비유 |
 |---|---|
 | 위치 확정 | "**자기 GPS 좌표 확인**" — 어디서 호출되든 일관 |
-| 6개 순차 실행 | **6단계 신설 프로세스** 순차 진행 — 중간 실패 시 즉시 중단 |
+| 0) gawk 보장 | **공구 박스에 필수 도구 있는지 확인** — 없으면 자동 구매 |
+| 7개 순차 실행 | **7단계 신설 프로세스** 순차 진행 — 중간 실패 시 즉시 중단 |
 | 배포 | **운영 도구를 정식 위치로 이전** + 권한 도장 |
-| 검증 | **35개 항목 자체 점검** — 평가자 시점 미리 |
+| 검증 | **40개 항목 자체 점검** — 평가자 시점 미리 |
 | 안내 | "**다음 사람이 할 일**" 메모 남기기 |
 
 ---
@@ -195,4 +238,4 @@ echo "  3. 1-2분 대기 후 monitor.log 누적 확인:"
 
 ## 🎯 한 줄 정리
 
-> **6 스크립트 순차 + 2 바이너리 배포 + 35 검증 + 안내 = 평가자가 한 줄로 전체 환경 재현하는 통합 진입점.**
+> **0) gawk 보장 + 7 스크립트 순차 + 2 바이너리 배포 + 40 검증 + 안내 = 평가자가 한 줄로 전체 환경 재현하는 통합 진입점.**

@@ -1,18 +1,29 @@
 # `setup/verify.sh` — 줄별·문법 풀이
 
-> **한 줄로** · 명세 7개 영역 35개 항목을 `check` 함수로 자동 점검. 실패해도 끝까지 진행 + 종합 결과.
+> **한 줄로** · 명세 8개 영역 40개 항목을 `check` 함수로 자동 점검. 실패해도 끝까지 진행 + 종합 결과. **self-elevation** 으로 일반 사용자 호출 시 sudo 자동 처리.
 >
 > **코드**: [setup/verify.sh](../../setup/verify.sh)
 > **관련**: 회고 노트 [함정 3 (SIGPIPE × pipefail)](https://github.com/codewhite7777/codyssey_notes/blob/main/retrospectives/2026-05-12-b1-1-troubleshooting.md#함정-3--최대-발견-verifysh--직접-실행-ok-스크립트-안-fail)
+
+## 사용법
+
+```bash
+bash setup/verify.sh              # root 권한 자동 escalate (sudo 자동 호출)
+sudo bash setup/verify.sh         # 이미 root 면 즉시 진행
+```
+
+→ self-elevation 한 줄 덕에 사용자가 sudo 잊어도 자동 처리 (아래 §self-elevation 참조).
 
 ## 🌳 전체 구조
 
 ```mermaid
 flowchart LR
-    A(["check 함수 정의"]) --> B(["7개 영역 × 5개 평균"])
+    S(["self-elevation: EUID 체크 → sudo 재실행"]) --> A(["check 함수 정의"])
+    A --> B(["8개 영역 × 5개 평균 = 40 check"])
     B --> C(["실패 카운트"])
     C --> D(["종합 결과 + exit"])
 
+    style S fill:#fff3b0,stroke:#c0a35a,stroke-width:2px
     style A fill:#dbe9ff,stroke:#5a8fc0,stroke-width:2px
     style B fill:#ffe6cc,stroke:#c08f5a,stroke-width:2px
     style D fill:#ccffcc,stroke:#5ac08f,stroke-width:2px
@@ -52,6 +63,66 @@ sudo sshd -T | grep -q "^port 20022$"
 → verify 에서는 `pipefail` 끄는 게 정답.
 
 이 함정 발견·해결 과정 자체가 자기평가의 핵심 답변 재료 (회고 노트 참조).
+
+---
+
+## self-elevation — 권한 자동 escalate (★ 신규)
+
+```bash
+if [ "$EUID" -ne 0 ]; then
+    exec sudo "$0" "$@"
+fi
+```
+
+### 왜 필요한가 — 세 번째 트러블슈팅
+
+처음엔 verify.sh 가 sudo 없이 호출됐을 때 10 개 항목이 false FAIL:
+```
+[4] /home/agent-admin/agent-app 존재         [FAIL]   ← 디렉토리 실제 존재
+[5] 키 파일 존재                              [FAIL]   ← 파일 실제 존재
+[6] monitor.sh 존재 / 권한 / 소유자 등        [FAIL]
+결과: PASS=30, FAIL=10
+```
+
+원인: 일부 check (`[ -d ]`, `[ -f ]`, `stat`) 가 `/home/agent-admin/` 안 자원에 접근. 디렉토리 권한 0750 (owner=agent-admin, group=agent-core). aranglee 는 agent-core 멤버 X → 접근 권한 0 → `[ -d ]` false → false FAIL.
+
+setup-all.sh 가 호출할 땐 *이미 root* → 통과. 직접 `bash setup/verify.sh` 만 호출하면 함정 — monitor.sh sudoers + report.sh gawk 와 *같은 패턴* 의 세 번째 사례.
+
+### 줄별 분해
+
+| 표현 | 의미 |
+|---|---|
+| `$EUID` | **e**ffective **UID** — bash 의 특수 변수. 0 이면 root. |
+| `-ne 0` | not equal 0 — root 가 아니면 |
+| `exec` | 현재 프로세스 **교체** (자식 프로세스 X) — 깨끗한 권한 전환 |
+| `sudo "$0" "$@"` | 자기 자신 ($0) 을 같은 인자 ($@) 로 sudo 재실행 |
+
+`exec` 와 일반 `sudo "$0" "$@"; exit` 의 차이:
+- `exec` → 현재 셸이 sudo 로 *교체*, PID 동일, 종료 후 호출자에게 바로 복귀
+- exec 없이 → 자식 프로세스 생성, 중첩 셸 — exit code 전달이 한 단계 더
+
+→ **exec 가 더 깨끗** (불필요한 fork 회피 + exit code 직접 전달).
+
+### 효과
+
+```bash
+$ bash setup/verify.sh             # sudo 없이 호출
+[sudo] password for aranglee:      # 자동 prompt (또는 timestamp 유효 시 skip)
+##############################################
+# 명세 검증 (verify.sh)
+##############################################
+... (모든 check root 권한으로 정상 통과)
+결과: PASS=40, FAIL=0
+```
+
+세 함정의 *대칭 해결*:
+| 사고 | 코드 가정 | 환경 실제 | 해결 |
+|---|---|---|---|
+| monitor.sh false WARNING | NOPASSWD 룰 있음 | 없음 | `setup/07-sudoers.sh` 신규 |
+| report.sh syntax error | gawk 있음 | mawk only | `setup-all.sh` 의 gawk 보장 |
+| **verify.sh false FAIL** | **root 호출** | **일반 사용자 호출** | **self-elevation 한 줄** |
+
+→ 같은 패턴 (코드 작성자 환경 가정 ↔ 실제 환경) 에 같은 진단 (silent/false 결과 → 추적) 으로 일관 대응.
 
 ---
 
@@ -142,7 +213,19 @@ bash 배열 표기 — 다른 셸(예: dash)에서는 안 됨. `#!/usr/bin/env b
 
 ---
 
-## 35개 check 호출 — 7개 영역
+## 40개 check 호출 — 8개 영역
+
+| # | 영역 | check 수 |
+|---|---|---|
+| [1] | SSH 설정 | 3 |
+| [2] | 방화벽 | 3 |
+| [3] | 계정·그룹 | 12 |
+| [4] | 디렉토리·권한 | 6 |
+| [5] | 환경 변수·키 파일 | 4 |
+| [6] | monitor.sh 설치·권한 | 5 |
+| [7] | cron·logrotate | 3 |
+| [8] | sudoers (★ 신규) | 5 |
+| **합계** | | **40** |
 
 각 영역은 `echo "===== [N] 영역명 ====="` 헤더 + 여러 check 호출.
 
@@ -215,6 +298,46 @@ check "monitor.sh 권한 750" "[ \"\$(stat -c %a \"$MONITOR\" 2>/dev/null)\" = '
 
 ---
 
+## [8] sudoers 영역 (★ 신규) — monitor.sh 의 ufw 점검 지원
+
+```bash
+SUDOERS_FILE="/etc/sudoers.d/agent-admin-monitor"
+check "sudoers 파일 존재"                        "[ -f \"$SUDOERS_FILE\" ]"
+check "sudoers 파일 권한 0440"                   "[ \"\$(sudo stat -c %a \"$SUDOERS_FILE\" 2>/dev/null)\" = '440' ]"
+check "sudoers 파일 소유자 root"                 "[ \"\$(sudo stat -c %U \"$SUDOERS_FILE\" 2>/dev/null)\" = 'root' ]"
+check "sudoers 문법 OK (visudo -cf)"             "sudo visudo -cf \"$SUDOERS_FILE\""
+check "agent-admin → sudo -n ufw status 동작"    'sudo -u agent-admin sudo -n /usr/sbin/ufw status'
+```
+
+### 다섯 check 의 의미
+
+| check | 검증 영역 |
+|---|---|
+| 파일 존재 | `setup/07-sudoers.sh` 가 실제로 작성했나 |
+| 권한 0440 | sudo 가 인식할 수 있는 유일한 모드 — 0440 아니면 sudo 가 파일 무시 |
+| 소유자 root | sudoers.d 표준 — 일반 사용자가 수정 못 함 |
+| 문법 OK (`visudo -cf`) | 락아웃 위험 회피 — 잘못된 sudoers 는 시스템 sudo 자체 망가뜨림 |
+| ★ **실작동** | 가장 결정적 — *NOPASSWD 룰이 정말 동작하는지* 직접 시뮬레이션 |
+
+마지막 check 가 핵심:
+```bash
+sudo -u agent-admin sudo -n /usr/sbin/ufw status
+```
+
+이중 sudo —
+- 첫째 `sudo -u agent-admin` → 테스트용 agent-admin 변신
+- 둘째 `sudo -n /usr/sbin/ufw status` → agent-admin 이 NOPASSWD 룰로 호출
+
+monitor.sh 가 정확히 이 형태로 호출하니까 (`bin/monitor.sh:136`), 이게 통과해야 false WARNING 사라짐.
+
+### 자기평가 답변 재료
+
+5/5 [OK] 자체가 **§7 트러블슈팅의 결정적 evidence**. 파일·권한·문법·실작동 4 층위 모두 자동 검증 — *"설정만 확인하고 작동은 안 봄"* 같은 false success 회피.
+
+상세 코드: [07-sudoers.md](./07-sudoers.md) · 정책 맥락: [sudo-policy.md](./sudo-policy.md) §9.
+
+---
+
 ## 종합 결과
 
 ```bash
@@ -276,6 +399,7 @@ exit 0
 | 함정 | 원인·해결 |
 |---|---|
 | 직접 명령 OK, verify FAIL | **SIGPIPE × pipefail** (회고 함정 3) — 해결됨 |
+| ★ `bash setup/verify.sh` 가 10 항목 false FAIL | aranglee 가 agent-core 아니라 `[ -d ]` false. **해결: self-elevation (`exec sudo "$0" "$@"`)** — sudo 자동 호출 |
 | `((PASS++))` 가 set -e 발동 | PASS=0 일 때 산술 결과 0 → false. `\|\| true` 필수 |
 | escape 헷갈림 | check cmd 문자열은 **eval 시점에 expand** — `\$`, `\"` escape 필요 |
 | 한 항목 실패 후 종료 | `set -e` 활성 시 — verify 는 `-u` 만 쓰는 이유 |
@@ -285,4 +409,4 @@ exit 0
 
 ## 🎯 한 줄 정리
 
-> **check 함수 1개 + eval + 7 영역 35 호출** — 평가의 자동화·일관성을 한 페이지로. **pipefail 끄기**가 SIGPIPE 함정 회피의 핵심.
+> **self-elevation + check 함수 1개 + eval + 8 영역 40 호출** — 평가의 자동화·일관성을 한 페이지로. **pipefail 끄기**가 SIGPIPE 함정 회피의 핵심, **self-elevation 한 줄**이 권한 격리 함정 회피의 핵심.

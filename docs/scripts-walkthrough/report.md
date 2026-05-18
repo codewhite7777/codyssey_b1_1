@@ -1,9 +1,14 @@
 # `bin/report.sh` — 줄별·문법 풀이
 
-> **한 줄로** · monitor.log 의 라인을 파싱해 CPU·MEM·DISK 평균·최대·최소 + 최대 시점 통계 출력. awk 한 패스로 처리. 선택적 시간 범위 필터.
+> **한 줄로** · monitor.log 의 라인을 파싱해 CPU·MEM·DISK 평균·최대·최소 + 최대 시점 통계 출력. **gawk** 한 패스로 처리. 선택적 시간 범위 필터.
 >
 > **코드**: [bin/report.sh](../../bin/report.sh)
 > **관련 학습 노트**: [cron-fundamentals](https://github.com/codewhite7777/codyssey_notes/blob/main/codyssey_b1_1_study/cron-fundamentals.md), [log-rotation](https://github.com/codewhite7777/codyssey_notes/blob/main/codyssey_b1_1_study/log-rotation.md)
+
+> [!IMPORTANT]
+> **gawk 필수** — `match($0, /RE/, ARR)` 의 **3번째 인자 (캡처 배열)** 는 gawk 확장. Ubuntu 24.04 default = **mawk** → `syntax error at or near ,` 발생. `setup/setup-all.sh` 의 0단계가 `gawk` 설치를 멱등 보장 + report.sh 가 명시적으로 `gawk` 호출 (awk symlink 가 mawk 가리켜도 정확 동작).
+>
+> 발견·진단 흐름: [수행내역서 §보너스 report.sh](../수행내역서.md) 참조.
 
 ## 🌳 전체 흐름
 
@@ -42,7 +47,7 @@ export LC_ALL=C
 LOG_FILE="$AGENT_LOG_DIR/monitor.log"
 ```
 
-`LC_ALL=C` — date·awk 출력 안정화 (monitor.sh 와 동일).
+`LC_ALL=C` — date·gawk 출력 안정화 (monitor.sh 와 동일). 한국어 locale 에서 숫자·날짜 포맷이 awk 파싱과 충돌하는 함정 회피.
 
 `AGENT_LOG_DIR:= default` — cron 또는 직접 호출 모두 대응.
 
@@ -92,11 +97,12 @@ END="${2:-}"
 
 ---
 
-## 시간 범위 필터링 (awk)
+## 시간 범위 필터링 (gawk)
 
 ```bash
 if [ -n "$START" ] || [ -n "$END" ]; then
-    FILTERED=$(awk -v s="$START" -v e="$END" '
+    # gawk 명시 — Ubuntu default awk 가 mawk 라 match() 3번째 인자 미지원
+    FILTERED=$(gawk -v s="$START" -v e="$END" '
         {
             match($0, /\[([0-9-]+ [0-9:]+)\]/, m)
             ts = m[1]
@@ -120,9 +126,11 @@ fi
 
 → START 또는 END 중 하나라도 있으면 필터링.
 
-### `awk -v VAR="value"` — awk 변수 전달
+### `gawk -v VAR="value"` — gawk 변수 전달
 
-bash 변수를 awk 안으로 가져옴. 쌍따옴표 안의 `$X` 가 expand 되어 awk 에게 전달.
+bash 변수를 gawk 안으로 가져옴. 쌍따옴표 안의 `$X` 가 expand 되어 gawk 에게 전달.
+
+> ※ `awk -v` 와 동일 문법이지만 *어떤 awk 가 실행되는지* 가 명령 이름으로 결정. `awk` 호출 시 alternatives 가 mawk 를 가리키면 mawk 실행, `gawk` 호출 시 항상 gawk.
 
 ### awk 흐름 — `BEGIN / 본문 / END`
 
@@ -203,7 +211,8 @@ SAMPLES=$(echo "$FILTERED" | wc -l)
 compute_stats() {
     local metric="$1"
     local label="$2"
-    echo "$FILTERED" | awk -v m="$metric" -v label="$label" '
+    # gawk 명시 — match() 3번째 인자 (캡처 배열) 사용
+    echo "$FILTERED" | gawk -v m="$metric" -v label="$label" '
         BEGIN { min_v=999999; max_v=-1; sum=0; count=0; max_ts=""; min_ts="" }
         {
             match($0, /\[([0-9-]+ [0-9:]+)\]/, t)
@@ -352,14 +361,16 @@ END 가 없으면 "now" 출력. 사용자에게 의미 전달.
 
 | 함정 | 원인·해결 |
 |---|---|
-| `match(...,...,arr)` 안 됨 | gawk 확장 — mawk 에선 다른 문법 — `gawk` 명시 또는 awk 대안 |
+| ★ `awk: syntax error at or near ,` | Ubuntu default = **mawk** — `match()` 3번째 인자(캡처 배열) 미지원. **해결: `awk` → `gawk` 명시 호출** + `setup-all.sh` 의 0단계 (`command -v gawk \|\| apt-get install -y gawk`) 가 멱등 보장 |
+| `gawk: command not found` | 패키지 부재 — `sudo apt-get install -y gawk` (setup-all.sh 가 자동 처리) |
 | 시간 비교가 안 됨 | 타임스탬프 형식이 사전식 정렬 가능해야 (`YYYY-MM-DD HH:MM:SS`) |
 | 빈 로그 파일 | `[ -z "$FILTERED" ]` 검사 후 안내 |
 | 평균이 0 | count==0 — 메트릭 형식이 코드와 안 맞음 |
 | 큰 로그에서 느림 | `cat "$LOG_FILE"` 전체 메모리 — 대용량은 stream 처리로 개선 |
+| CPU max·min 동일 시점 | `if (val > max_v)` 가 엄격 비교 → 동률 미갱신. variance=0 데이터에서 자연스러운 결과 |
 
 ---
 
 ## 🎯 한 줄 정리
 
-> **awk 한 패스로 라인별 파싱 + 통계 계산**. 사전식 정렬 가능한 ISO 시간 형식이 awk 문자열 비교로 시간 필터링을 가능케 함.
+> **gawk 한 패스로 라인별 파싱 + 통계 계산**. 사전식 정렬 가능한 ISO 시간 형식이 gawk 문자열 비교로 시간 필터링을 가능케 함. gawk 의존성은 setup-all 의 0단계가 멱등 보장.
