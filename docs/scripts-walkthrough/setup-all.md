@@ -134,7 +134,7 @@ done
 
 ---
 
-## monitor.sh·report.sh 배포
+## 3개 bin 스크립트 배포 (monitor.sh / report.sh / log-rotate.sh)
 
 ```bash
 AGENT_BIN="/home/agent-admin/agent-app/bin"
@@ -143,7 +143,18 @@ sudo install -m 750 -o agent-dev -g agent-core \
     "$REPO_ROOT/bin/monitor.sh" "$AGENT_BIN/monitor.sh"
 sudo install -m 750 -o agent-dev -g agent-core \
     "$REPO_ROOT/bin/report.sh"  "$AGENT_BIN/report.sh"
+# log-rotate.sh — 보너스 2 시간 기반 보존 (root cron.d 에서 호출)
+sudo install -m 750 -o agent-dev -g agent-core \
+    "$REPO_ROOT/bin/log-rotate.sh" "$AGENT_BIN/log-rotate.sh"
 ```
+
+### 세 스크립트의 역할
+
+| 스크립트 | 호출 시점 | 호출 주체 |
+|---|---|---|
+| `monitor.sh` | 매분 | agent-admin crontab |
+| `report.sh` | 수동 | agent-admin 또는 agent-core 그룹원 |
+| `log-rotate.sh` | 매일 03:00 | root (`/etc/cron.d/agent-log-rotate`) |
 
 ### `install` 명령 — cp + chmod + chown 한 번에
 
